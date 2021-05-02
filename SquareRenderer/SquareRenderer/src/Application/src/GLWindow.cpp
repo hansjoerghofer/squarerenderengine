@@ -10,13 +10,9 @@
 #include <stdexcept>
 
 GLWindow::GLWindow(int width, int height, const std::string& title)
-    : m_handle(nullptr)
-    , m_width(width)
+    : m_width(width)
     , m_height(height)
-    , m_dpiScaling(1.f)
     , m_title(title)
-    , m_guiInitialized(false)
-    , m_showUiDemo(true)
 {
     if (m_width <= 0 || m_height <= 0)
     {
@@ -86,7 +82,7 @@ void GLWindow::renderGUI()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow(&m_showUiDemo);
+    onGUI();
 
     // Rendering
     ImGui::Render();
@@ -128,6 +124,11 @@ int GLWindow::height() const
     return m_height;
 }
 
+float GLWindow::dpiScaling() const
+{
+    return m_dpiScaling;
+}
+
 bool GLWindow::enableGUI()
 {
     // Setup Dear ImGui context
@@ -139,7 +140,7 @@ bool GLWindow::enableGUI()
     style.ScaleAllSizes(m_dpiScaling);
 
     ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontFromFileTTF("Resources/verdana.ttf", 18.0f * m_dpiScaling, nullptr, nullptr);
+    io.Fonts->AddFontFromFileTTF("Resources/Fonts/verdana.ttf", 18.0f * m_dpiScaling, nullptr, nullptr);
 
     // Setup Platform/Renderer backends
     if (!ImGui_ImplGlfw_InitForOpenGL(m_handle, true))
@@ -157,10 +158,21 @@ bool GLWindow::enableGUI()
 
 void GLWindow::onResize(int width, int height)
 {
+}
+
+void GLWindow::onGUI()
+{
+    ImGui::ShowDemoWindow(&m_showUiDemo);
+}
+
+void GLWindow::handleResize(int width, int height)
+{
     m_width = width;
     m_height = height;
 
     glViewport(0, 0, m_width, m_height);
+
+    onResize(width, height);
 }
 
 void GLWindow::cleanupGUI()
@@ -175,7 +187,7 @@ void GLWindow::cleanupGUI()
     ImGui::DestroyContext();
 }
 
-GLWindow* GLWindow::getWindowFromHandle(GLFWwindow* handle)
+GLWindow* GLWindow::getGLWindowFromHandle(GLFWwindow* handle)
 {
     if (handle)
     {
@@ -187,9 +199,9 @@ GLWindow* GLWindow::getWindowFromHandle(GLFWwindow* handle)
 
 void GLWindow::onResizeCallback(GLFWwindow* handle, int width, int height)
 {
-    GLWindow* window = getWindowFromHandle(handle);
+    GLWindow* window = getGLWindowFromHandle(handle);
     if (window)
     {
-        window->onResize(width, height);
+        window->handleResize(width, height);
     }
 }

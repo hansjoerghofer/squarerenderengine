@@ -1,8 +1,8 @@
 #pragma once
 
-#include <memory>
+#include "Common/Macros.h"
 
-class GLWindow;
+DECLARE_PTRS(GLWindow);
 
 enum class Key
 {
@@ -19,7 +19,7 @@ enum class Key
 class InputHandler
 {
 public:
-	InputHandler(std::shared_ptr<GLWindow> window);
+	InputHandler(GLWindowSPtr window);
 
 	virtual ~InputHandler();
 
@@ -31,6 +31,6 @@ public:
 
 protected:
 	
-	std::shared_ptr<GLWindow> m_window;
+	GLWindowSPtr m_window;
 };
 

@@ -8,11 +8,12 @@ int ConvertKey(Key k)
 	switch (k)
 	{
 	case Key::Escape:	return GLFW_KEY_ESCAPE;
+	// TODO all other cases!
 	default:			return GLFW_KEY_UNKNOWN;
 	}
 }
 
-InputHandler::InputHandler(std::shared_ptr<GLWindow> window)
+InputHandler::InputHandler(GLWindowSPtr window)
 	: m_window(window)
 {
 }

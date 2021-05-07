@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Common/Macros.h"
+
 #include <string>
+
+DECLARE_PTRS(SharedResource);
+DECLARE_PTRS(ShaderSource);
 
 enum class ShaderType : int
 {
@@ -15,19 +20,26 @@ class ShaderSource
 public:
 
 	ShaderSource(ShaderType type, const std::string& source);
-
 	ShaderSource(ShaderType type, std::string&& source);
 
-	~ShaderSource();
+	virtual ~ShaderSource();
 
-	const ShaderType type() const;
+	void link(SharedResourceUPtr resource);
 
-	const std::string source() const;
+	int id() const;
+
+	ShaderType type() const;
+
+	const std::string& source() const;
 
 protected:
 
 	ShaderType m_type;
+
 	std::string m_source;
 
+	SharedResourceUPtr m_linkedResource;
+
+	std::string m_compileLog;
 };
 

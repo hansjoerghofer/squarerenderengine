@@ -20,7 +20,7 @@ protected:
 
 	bool readFile(const std::filesystem::path& filepath, std::stringstream& out);
 
-	bool parseString(std::stringstream& source, std::stringstream& out);
+	bool parseString(std::stringstream&& source, std::stringstream& out);
 
 	bool handleDefine(const std::string& line, std::stringstream& out);
 
@@ -31,5 +31,7 @@ protected:
 	std::stack<std::filesystem::path> m_pathStack;
 
 	std::unordered_map<std::string, std::string> m_fileCache;
+
+	std::unordered_map<std::string, ShaderSourceSPtr> m_shaderCache;
 };
 

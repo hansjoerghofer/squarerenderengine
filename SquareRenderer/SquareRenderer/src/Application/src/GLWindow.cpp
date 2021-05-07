@@ -6,6 +6,7 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_opengl3.h"
+#include "ImGui/LogWidget.h"
 
 #include <stdexcept>
 
@@ -152,17 +153,29 @@ bool GLWindow::enableGUI()
         return false;
     }
 
+    m_logUiWidget = std::make_shared<LogWidget>();
+
+    m_logCallback = Logger::getInstance().registerCallback(
+        [=](LogSeverity s, const std::string& message)
+        {
+            m_logUiWidget->AddLog("[%s] %s\n", Logger::severity(s).c_str(), message.c_str());
+        }
+    );
+
     m_guiInitialized = true;
     return m_guiInitialized;
 }
 
-void GLWindow::onResize(int width, int height)
+void GLWindow::onResize(int /*width*/, int /*height*/)
 {
 }
 
 void GLWindow::onGUI()
 {
-    ImGui::ShowDemoWindow(&m_showUiDemo);
+    //ImGui::ShowDemoWindow(&m_showUiDemo);
+
+    ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
+    m_logUiWidget->Draw("Log", &m_showUiDemo);
 }
 
 void GLWindow::handleResize(int width, int height)

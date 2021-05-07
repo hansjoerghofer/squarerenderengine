@@ -1,9 +1,15 @@
 #pragma once
 
+#include "Common/Macros.h"
+#include "Common/Logger.h"
+
 #include <string>
 
 struct GLFWwindow;
 class InputHandler;
+
+DECLARE_PTRS(LogWidget);
+DECLARE_PTRS(GLWindow);
 
 class GLWindow
 {
@@ -34,6 +40,9 @@ protected:
 
 	bool m_guiInitialized = false;
 	bool m_showUiDemo = true;
+
+	LogWidgetSPtr m_logUiWidget;
+	LogCallbackSPtr m_logCallback;
 
 	GLFWwindow* m_handle = nullptr;
 

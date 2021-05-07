@@ -1,43 +1,44 @@
 #include "Scene/CubeGeometry.h"
+#include "Resources/SharedResource.h"
 
-const std::vector<Vertex> CubeGeometry::vertices = {
+const std::vector<Vertex> CubeGeometry::s_vertices = {
     // front
-    { glm::vec3(-.5,-.5, .5), glm::vec2(0,1), FORWARD },
-    { glm::vec3( .5,-.5, .5), glm::vec2(1,1), FORWARD },
-    { glm::vec3( .5, .5, .5), glm::vec2(1,0), FORWARD },
-    { glm::vec3(-.5, .5, .5), glm::vec2(0,0), FORWARD },
+    { glm::vec3(-.5,-.5, .5), glm::vec2(0,1),  glm::vec3(0, 0, 1) },
+    { glm::vec3( .5,-.5, .5), glm::vec2(1,1),  glm::vec3(0, 0, 1) },
+    { glm::vec3( .5, .5, .5), glm::vec2(1,0),  glm::vec3(0, 0, 1) },
+    { glm::vec3(-.5, .5, .5), glm::vec2(0,0),  glm::vec3(0, 0, 1) },
     // back
-    { glm::vec3(-.5,-.5,-.5), glm::vec2(0,1), -FORWARD },
-    { glm::vec3( .5,-.5,-.5), glm::vec2(1,1), -FORWARD },
-    { glm::vec3( .5, .5,-.5), glm::vec2(1,0), -FORWARD },
-    { glm::vec3(-.5, .5,-.5), glm::vec2(0,0), -FORWARD },
+    { glm::vec3(-.5,-.5,-.5), glm::vec2(0,1), -glm::vec3(0, 0, 1) },
+    { glm::vec3( .5,-.5,-.5), glm::vec2(1,1), -glm::vec3(0, 0, 1) },
+    { glm::vec3( .5, .5,-.5), glm::vec2(1,0), -glm::vec3(0, 0, 1) },
+    { glm::vec3(-.5, .5,-.5), glm::vec2(0,0), -glm::vec3(0, 0, 1) },
     // right
-    { glm::vec3( .5,-.5, .5), glm::vec2(0,1), RIGHT },
-    { glm::vec3( .5,-.5,-.5), glm::vec2(1,1), RIGHT },
-    { glm::vec3( .5, .5,-.5), glm::vec2(1,0), RIGHT },
-    { glm::vec3( .5, .5, .5), glm::vec2(0,0), RIGHT },
+    { glm::vec3( .5,-.5, .5), glm::vec2(0,1),  glm::vec3(1, 0, 0) },
+    { glm::vec3( .5,-.5,-.5), glm::vec2(1,1),  glm::vec3(1, 0, 0) },
+    { glm::vec3( .5, .5,-.5), glm::vec2(1,0),  glm::vec3(1, 0, 0) },
+    { glm::vec3( .5, .5, .5), glm::vec2(0,0),  glm::vec3(1, 0, 0) },
     // left
-    { glm::vec3(-.5,-.5,-.5), glm::vec2(0,1), -RIGHT },
-    { glm::vec3(-.5,-.5, .5), glm::vec2(1,1), -RIGHT },
-    { glm::vec3(-.5, .5, .5), glm::vec2(1,0), -RIGHT },
-    { glm::vec3(-.5, .5,-.5), glm::vec2(0,0), -RIGHT },
+    { glm::vec3(-.5,-.5,-.5), glm::vec2(0,1), -glm::vec3(1, 0, 0) },
+    { glm::vec3(-.5,-.5, .5), glm::vec2(1,1), -glm::vec3(1, 0, 0) },
+    { glm::vec3(-.5, .5, .5), glm::vec2(1,0), -glm::vec3(1, 0, 0) },
+    { glm::vec3(-.5, .5,-.5), glm::vec2(0,0), -glm::vec3(1, 0, 0) },
     // bottom
-    { glm::vec3(-.5,-.5,-.5), glm::vec2(0,1), -UP },
-    { glm::vec3( .5,-.5,-.5), glm::vec2(1,1), -UP },
-    { glm::vec3( .5,-.5, .5), glm::vec2(1,0), -UP },
-    { glm::vec3(-.5,-.5, .5), glm::vec2(0,0), -UP },
+    { glm::vec3(-.5,-.5,-.5), glm::vec2(0,1), -glm::vec3(0, 1, 0) },
+    { glm::vec3( .5,-.5,-.5), glm::vec2(1,1), -glm::vec3(0, 1, 0) },
+    { glm::vec3( .5,-.5, .5), glm::vec2(1,0), -glm::vec3(0, 1, 0) },
+    { glm::vec3(-.5,-.5, .5), glm::vec2(0,0), -glm::vec3(0, 1, 0) },
     // top
-    { glm::vec3(-.5, .5, .5), glm::vec2(0,1), UP },
-    { glm::vec3( .5, .5, .5), glm::vec2(1,1), UP },
-    { glm::vec3( .5, .5,-.5), glm::vec2(1,0), UP },
-    { glm::vec3(-.5, .5,-.5), glm::vec2(0,0), UP }
+    { glm::vec3(-.5, .5, .5), glm::vec2(0,1),  glm::vec3(0, 1, 0) },
+    { glm::vec3( .5, .5, .5), glm::vec2(1,1),  glm::vec3(0, 1, 0) },
+    { glm::vec3( .5, .5,-.5), glm::vec2(1,0),  glm::vec3(0, 1, 0) },
+    { glm::vec3(-.5, .5,-.5), glm::vec2(0,0),  glm::vec3(0, 1, 0) }
 };
 
-const std::vector<uint32_t> CubeGeometry::indices = {
+const std::vector<uint32_t> CubeGeometry::s_indices = {
     // front
     0, 1, 2,
     2, 3, 0,
-    // right
+    // glm::vec3(1, 0, 0)
     8, 9, 10,
     10, 11, 8,
     // back
@@ -58,34 +59,53 @@ CubeGeometry::CubeGeometry()
 {
 }
 
-size_t CubeGeometry::getVertexCount() const
+CubeGeometry::~CubeGeometry()
 {
-    return vertices.size();
 }
 
-size_t CubeGeometry::getVertexBufferSize() const
+void CubeGeometry::link(GeometryResourceUPtr resource)
 {
-    return sizeof(Vertex) * vertices.size();
+    m_linkedResource = std::move(resource);
 }
 
-size_t CubeGeometry::getIndexCount() const
+bool CubeGeometry::hasLink() const
 {
-    return indices.size();
+    return m_linkedResource && m_linkedResource->isValid();
 }
 
-const std::vector<Vertex>& CubeGeometry::getVertices() const
+bool CubeGeometry::isStatic() const
 {
-    return vertices;
+    return true;
 }
 
-size_t CubeGeometry::getIndexBufferSize() const
+size_t CubeGeometry::vertexCount() const
 {
-    return sizeof(uint32_t) * indices.size();
+    return s_vertices.size();
 }
 
-const std::vector<uint32_t>& CubeGeometry::getIndices() const
+size_t CubeGeometry::vertexBufferSize() const
 {
-    return indices;
+    return sizeof(Vertex) * s_vertices.size();
+}
+
+size_t CubeGeometry::indexCount() const
+{
+    return s_indices.size();
+}
+
+const std::vector<Vertex>& CubeGeometry::vertices() const
+{
+    return s_vertices;
+}
+
+size_t CubeGeometry::indexBufferSize() const
+{
+    return sizeof(uint32_t) * s_indices.size();
+}
+
+const std::vector<uint32_t>& CubeGeometry::indices() const
+{
+    return s_indices;
 }
 
 CubeGeometryUPtr CubeGeometry::create()

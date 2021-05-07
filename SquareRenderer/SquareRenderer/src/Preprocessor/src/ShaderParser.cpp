@@ -1,4 +1,4 @@
-#include "ShaderParser/ShaderParser.h"
+#include "Preprocessor/ShaderParser.h"
 #include "Material/ShaderSource.h"
 
 #include <fstream>
@@ -18,16 +18,23 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
 {
     std::filesystem::path path(filepath);
 
+    const auto& foundShader = m_shaderCache.find(filepath);
+    if (foundShader != m_shaderCache.end())
+    {
+        return foundShader->second;
+    }
+
     if (!std::filesystem::exists(path) || !path.has_filename())
     {
         throw std::runtime_error("Invalid path to Shader file.");
     }
 
-    const auto& found = s_extensionToShaderType.find(path.extension().string());
-    if (found == s_extensionToShaderType.end())
+    const auto& foundExt = s_extensionToShaderType.find(path.extension().string());
+    if (foundExt == s_extensionToShaderType.end())
     {
         throw std::runtime_error("Unknown Shader extension.");
     }
+    const ShaderType type = foundExt->second;
 
     // reset the path stack
     m_pathStack = std::stack<std::filesystem::path>();
@@ -36,9 +43,12 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
     std::stringstream content;
     if (readFile(path, content))
     {
-        const ShaderType type = found->second;
-        return std::make_shared<ShaderSource>(
+        ShaderSourceSPtr shader = std::make_shared<ShaderSource>(
             type, std::move(content.str()));
+
+        m_shaderCache[filepath] = shader;
+
+        return shader;
     }
     else
     {
@@ -76,7 +86,7 @@ bool ShaderParser::readFile(const std::filesystem::path& filepath, std::stringst
     m_pathStack.push(path.parent_path());
 
     std::stringstream parsed;
-    const bool valid = parseString(fileStream, parsed);
+    const bool valid = parseString(std::move(fileStream), parsed);
 
     m_pathStack.pop();
 
@@ -98,7 +108,7 @@ bool ShaderParser::readFile(const std::filesystem::path& filepath, std::stringst
     return true;
 }
 
-bool ShaderParser::parseString(std::stringstream& source, std::stringstream& out)
+bool ShaderParser::parseString(std::stringstream&& source, std::stringstream& out)
 {
     bool ok = true;
 

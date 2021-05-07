@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "IGeometry.h"
+#include "Geometry.h"
 
 DECLARE_PTRS(Mesh);
 
-class Mesh : public IGeometry
+class Mesh : public Geometry
 {
 public:
 
@@ -17,22 +17,30 @@ public:
 
     virtual ~Mesh() override;
 
-    virtual size_t getVertexCount() const override;
+    virtual void link(GeometryResourceUPtr resource) override;
 
-    virtual size_t getVertexBufferSize() const override;
+    virtual bool hasLink() const override;
 
-    virtual size_t getIndexCount() const override;
+    virtual bool isStatic() const override;
 
-    virtual size_t getIndexBufferSize() const override;
+    virtual size_t vertexCount() const override;
 
-    virtual const std::vector<Vertex>& getVertices() const override;
+    virtual size_t vertexBufferSize() const override;
 
-    virtual const std::vector<uint32_t>& getIndices() const override;
+    virtual size_t indexCount() const override;
+
+    virtual size_t indexBufferSize() const override;
+
+    virtual const std::vector<Vertex>& vertices() const override;
+
+    virtual const std::vector<uint32_t>& indices() const override;
 
     static MeshUPtr create(std::vector<Vertex>&& vertices,
                            std::vector<uint32_t>&& indices);
 
 protected:
+
+    GeometryResourceUPtr m_linkedResource;
 
     const std::vector<Vertex> m_vertices;
 

@@ -8,6 +8,7 @@ int ConvertKey(Key k)
 	switch (k)
 	{
 	case Key::Escape:	return GLFW_KEY_ESCAPE;
+	case Key::Space:	return GLFW_KEY_SPACE;
 	// TODO all other cases!
 	default:			return GLFW_KEY_UNKNOWN;
 	}

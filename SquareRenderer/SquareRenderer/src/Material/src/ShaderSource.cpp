@@ -1,4 +1,5 @@
 #include "Material/ShaderSource.h"
+#include "Resources/SharedResource.h"
 
 ShaderSource::ShaderSource(ShaderType type, const std::string& source)
 	: m_type(type)
@@ -16,12 +17,27 @@ ShaderSource::~ShaderSource()
 {
 }
 
-const ShaderType ShaderSource::type() const
+void ShaderSource::link(SharedResourceUPtr resource)
+{
+	m_linkedResource = std::move(resource);
+}
+
+int ShaderSource::id() const
+{
+	if (m_linkedResource && m_linkedResource->isValid())
+	{
+		return static_cast<int>(m_linkedResource->handle());
+	}
+
+	return -1;
+}
+
+ShaderType ShaderSource::type() const
 {
 	return m_type;
 }
 
-const std::string ShaderSource::source() const
+const std::string& ShaderSource::source() const
 {
 	return m_source;
 }

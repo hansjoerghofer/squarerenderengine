@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "Resources/SharedResource.h"
+#include "API/SharedResource.h"
 
 #include <glm/glm.hpp>
 
@@ -29,7 +29,7 @@ public:
 
 	void bind();
 
-	void unbind() const;
+	void unbind();
 
 	bool isBound() const;
 
@@ -41,13 +41,15 @@ public:
 
 	bool setUniformDefault(const std::string& name, UniformValue&& value);
 
+	bool bindUniformBlock(const std::string& name, int bindingPoint);
+
 private:
 
 	std::string m_name;
 
 	ShaderProgramResourceUPtr m_linkedResource;
 
-	mutable bool m_isBound;
+	bool m_isBound;
 
 	std::vector<ShaderSourceSPtr> m_sources;
 
@@ -86,15 +88,17 @@ struct UniformValue
 class ShaderProgramResource : public SharedResource
 {
 public:
-	virtual void bind() const = 0;
-	virtual void unbind() const = 0;
+	virtual void bind() = 0;
+	virtual void unbind() = 0;
 
 	virtual int uniformLocation(const std::string& name) const = 0;
 
-	virtual void setUniform(int location, int value) const = 0;
-	virtual void setUniform(int location, unsigned int value) const = 0;
-	virtual void setUniform(int location, float value) const = 0;
-	virtual void setUniform(int location, const glm::vec4& value) const = 0;
-	virtual void setUniform(int location, const glm::mat4x4& value) const = 0;
+	virtual void setUniform(int location, int value) = 0;
+	virtual void setUniform(int location, unsigned int value) = 0;
+	virtual void setUniform(int location, float value) = 0;
+	virtual void setUniform(int location, const glm::vec4& value) = 0;
+	virtual void setUniform(int location, const glm::mat4x4& value) = 0;
+
+	virtual bool bindUniformBlock(const std::string& name, int binding) = 0;
 };
 

@@ -2,7 +2,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-Camera::Camera(int width, int height, float near , float far)
+Camera::Camera(int width, int height, float near, float far)
 	: m_width(width)
 	, m_height(height)
 	, m_near(near)
@@ -19,7 +19,7 @@ Camera::~Camera()
 {
 }
 
-glm::vec4 Camera::viewport() const
+const glm::vec4& Camera::viewport() const
 {
 	return m_viewport;
 }
@@ -44,29 +44,29 @@ float Camera::far() const
 	return m_far;
 }
 
-glm::vec3 Camera::position() const
+const glm::vec3& Camera::position() const
 {
 	return m_position;
 }
 
-glm::vec3 Camera::viewDirection() const
+const glm::vec3& Camera::viewDirection() const
 {
 	return m_direction;
 }
 
-glm::mat4x4 Camera::projectionMatrix() const
+const glm::mat4x4& Camera::projectionMatrix() const
 {
 	return m_projection;
 }
 
-glm::mat4x4 Camera::viewMatrix() const
+const glm::mat4x4& Camera::viewMatrix() const
 {
 	return m_view;
 }
 
-void Camera::updateResolution(int widht, int height)
+void Camera::updateResolution(int width, int height)
 {
-	m_width = widht;
+	m_width = width;
 	m_height = height;
 }
 

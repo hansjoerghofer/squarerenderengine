@@ -12,7 +12,7 @@ public:
 
 	virtual ~SharedResource() = 0;
 
-	virtual int handle() const;
+	virtual SharedResourceHandle handle() const;
 
 	virtual bool isValid() const;
 

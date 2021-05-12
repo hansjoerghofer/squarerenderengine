@@ -14,7 +14,7 @@ public:
 
 	virtual ~Camera() = 0;
 
-	virtual glm::vec4 viewport() const;
+	virtual const glm::vec4& viewport() const;
 
 	virtual int width() const;
 
@@ -24,15 +24,15 @@ public:
 
 	virtual float far() const;
 
-	virtual glm::vec3 position() const;
+	virtual const glm::vec3& position() const;
 
-	virtual glm::vec3 viewDirection() const;
+	virtual const glm::vec3& viewDirection() const;
 
-	virtual glm::mat4x4 projectionMatrix() const;
+	virtual const glm::mat4x4& projectionMatrix() const;
 
-	virtual glm::mat4x4 viewMatrix() const;
+	virtual const glm::mat4x4& viewMatrix() const;
 
-	virtual void updateResolution(int widht, int height);
+	virtual void updateResolution(int width, int height);
 
 	virtual void lookAt(
 		glm::vec3 position,

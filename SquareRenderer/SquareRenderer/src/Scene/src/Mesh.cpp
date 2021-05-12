@@ -1,32 +1,34 @@
 #include "Scene/Mesh.h"
-#include "Resources/SharedResource.h"
+#include "API/SharedResource.h"
 
 Mesh::Mesh(const std::vector<Vertex>& vertices,
-           const std::vector<uint32_t>& indices)
+           const std::vector<uint32_t>& indices,
+           bool hasUVs,
+           bool hasNormals,
+           bool hasTangents)
     : m_vertices(vertices)
     , m_indices(indices)
+    , m_hasUVs(hasUVs)
+    , m_hasNormals(hasNormals)
+    , m_hasTangents(hasTangents)
 {
 }
 
 Mesh::Mesh(std::vector<Vertex>&& vertices,
-           std::vector<uint32_t>&& indices)
+           std::vector<uint32_t>&& indices,
+           bool hasUVs,
+           bool hasNormals,
+           bool hasTangents)
     : m_vertices(vertices)
     , m_indices(indices)
+    , m_hasUVs(hasUVs)
+    , m_hasNormals(hasNormals)
+    , m_hasTangents(hasTangents)
 {
 }
 
 Mesh::~Mesh()
 {
-}
-
-void Mesh::link(GeometryResourceUPtr resource)
-{
-    m_linkedResource = std::move(resource);
-}
-
-bool Mesh::hasLink() const
-{
-    return m_linkedResource && m_linkedResource->isValid();
 }
 
 bool Mesh::isStatic() const
@@ -64,7 +66,17 @@ const std::vector<uint32_t>& Mesh::indices() const
     return m_indices;
 }
 
-MeshUPtr Mesh::create(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices)
+bool Mesh::hasUVs() const
 {
-    return std::make_unique<Mesh>(vertices, indices);
+    return m_hasUVs;
+}
+
+bool Mesh::hasNormals() const
+{
+    return m_hasNormals;
+}
+
+bool Mesh::hasTangents() const
+{
+    return m_hasTangents;
 }

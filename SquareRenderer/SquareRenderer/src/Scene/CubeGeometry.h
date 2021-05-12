@@ -13,10 +13,6 @@ public:
 
     virtual ~CubeGeometry();
 
-    virtual void link(GeometryResourceUPtr resource) override;
-
-    virtual bool hasLink() const override;
-
     virtual bool isStatic() const override;
 
     virtual size_t vertexCount() const override;
@@ -31,11 +27,15 @@ public:
 
     virtual const std::vector<uint32_t>& indices() const override;
 
+    virtual bool hasUVs() const override;
+
+    virtual bool hasNormals() const override;
+
+    virtual bool hasTangents() const override;
+
     static CubeGeometryUPtr create();
 
 protected:
-
-    GeometryResourceUPtr m_linkedResource;
 
     static const std::vector<Vertex> s_vertices;
 

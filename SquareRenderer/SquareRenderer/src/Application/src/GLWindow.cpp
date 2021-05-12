@@ -1,4 +1,5 @@
 #include "Application/GLWindow.h"
+#include "Application/InputHandler.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -48,9 +49,14 @@ GLWindow::GLWindow(int width, int height, const std::string& title)
         throw std::runtime_error("Failed to switch to window context.");
     }
 
-    glViewport(0, 0, m_width, m_height);
+    int actualWidth, actualHeight;
+    glfwGetWindowSize(m_handle, &actualWidth, &actualHeight);
+    handleResize(actualWidth, actualHeight);
+
     glfwSetWindowUserPointer(m_handle, this);
     glfwSetFramebufferSizeCallback(m_handle, onResizeCallback);
+
+    m_inputHandler = std::make_shared<InputHandler>(m_handle);
 }
 
 GLWindow::~GLWindow()
@@ -164,6 +170,11 @@ bool GLWindow::enableGUI()
 
     m_guiInitialized = true;
     return m_guiInitialized;
+}
+
+const InputHandler& GLWindow::inputHandler() const
+{
+    return *m_inputHandler;
 }
 
 void GLWindow::onResize(int /*width*/, int /*height*/)

@@ -46,9 +46,11 @@ void ShaderProgram::bind()
 	}
 }
 
-void ShaderProgram::unbind() const
+void ShaderProgram::unbind()
 {
-	if (isBound())
+	if (m_isBound
+		&& m_linkedResource
+		&& m_linkedResource->isValid())
 	{
 		m_linkedResource->unbind();
 		m_isBound = false;
@@ -128,6 +130,16 @@ bool ShaderProgram::setUniformDefault(const std::string& name, UniformValue&& va
 			m_defaultUniformStorage[location] = std::move(value);
 			return true;
 		}
+	}
+
+	return false;
+}
+
+bool ShaderProgram::bindUniformBlock(const std::string& name, int bindingPoint)
+{
+	if (m_linkedResource && m_linkedResource->isValid())
+	{
+		return m_linkedResource->bindUniformBlock(name, bindingPoint);
 	}
 
 	return false;

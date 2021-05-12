@@ -1,11 +1,13 @@
-#include "Resources/GLAllocator.h"
-#include "Resources/SharedResource.h"
+#include "API/GraphicsAPI.h"
+#include "API/SharedResource.h"
 #include "Scene/Geometry.h"
 #include "Material/ShaderSource.h"
 #include "Material/ShaderProgram.h"
+#include "Material/UniformBlock.h"
+#include "Common/Logger.h"
 
-#include <Application/GL.h>
-
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
 
 class GLVertexArray : public GeometryResource
@@ -13,7 +15,7 @@ class GLVertexArray : public GeometryResource
 public:
     GLVertexArray(const Geometry& geometry) : GeometryResource()
     {
-        unsigned int VAO, VBO, EBO;
+        GLuint VAO, VBO, EBO;
 
         glGenVertexArrays(1, &VAO);
 
@@ -35,7 +37,7 @@ public:
                 geometry.isStatic() ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
         }
 
-        const size_t stride = sizeof(Vertex);
+        const GLsizei stride = sizeof(Vertex);
 
         // vertex positions
         glEnableVertexAttribArray(0);
@@ -43,30 +45,57 @@ public:
             GL_FLOAT, GL_FALSE,
             stride, (void*)offsetof(Vertex, position));
 
-        // vertex texture coords
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2,
-            GL_FLOAT, GL_FALSE,
-            stride, (void*)offsetof(Vertex, uv));
+        int location = 1;
+        if (geometry.hasUVs())
+        {
+            // vertex texture coords
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, 2,
+                GL_FLOAT, GL_FALSE,
+                stride, (void*)offsetof(Vertex, uv));
 
-        // TODO
-        //if (includeNormTan)
+            ++location;
+        }
+        
+        if (geometry.hasNormals())
         {
             // vertex normals
-            glEnableVertexAttribArray(2);
-            glVertexAttribPointer(2, 3,
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, 3,
                 GL_FLOAT, GL_FALSE,
                 stride, (void*)offsetof(Vertex, normal));
 
+            ++location;
+        }
+
+        if (geometry.hasTangents())
+        {
             // vertex tangents
-            glEnableVertexAttribArray(3);
-            glVertexAttribPointer(3, 3,
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, 3,
                 GL_FLOAT, GL_FALSE,
                 stride, (void*)offsetof(Vertex, tangent));
+
+            ++location;
         }
         glBindVertexArray(0);
 
+        GraphicsAPICheckError();
+
         m_handle = static_cast<SharedResourceHandle>(VAO);
+    }
+
+    virtual void bind() override
+    {
+        if (isValid())
+        {
+            glBindVertexArray(handle());
+        }
+    }
+
+    virtual void unbind() override
+    {
+        glBindVertexArray(0);
     }
 
     virtual ~GLVertexArray()
@@ -75,6 +104,7 @@ public:
         {
             const GLuint handle = static_cast<GLuint>(m_handle);
             glDeleteVertexArrays(1, &handle);
+            m_handle = INVALID_HANDLE;
         }
     }
 };
@@ -124,6 +154,8 @@ public:
                 m_handle = static_cast<SharedResourceHandle>(handle);
             }
         }
+
+        GraphicsAPICheckError();
     }
 
     const std::string& compilerLog() const
@@ -151,8 +183,7 @@ public:
     {
         unsigned int id = glCreateProgram();
 
-        const auto shaders = program.sources();
-        for (const auto& shader : shaders)
+        for (const auto& shader : program.sources())
         {
             if (shader->id() >= 0)
             {
@@ -174,9 +205,11 @@ public:
         {
             m_handle = static_cast<SharedResourceHandle>(id);
         }
+
+        GraphicsAPICheckError();
     }
 
-    void bind() const override
+    void bind() override
     {
         if (isValid())
         {
@@ -185,7 +218,7 @@ public:
         }
     }
 
-    void unbind() const override
+    void unbind() override
     {
         glUseProgram(0);
         m_isBound = false;
@@ -201,7 +234,23 @@ public:
         return -1;
     }
 
-    void setUniform(int location, int value) const override
+    bool bindUniformBlock(const std::string& name, int binding) override
+    {
+        if (isValid())
+        {
+            unsigned int idx = glGetUniformBlockIndex(handle(), name.c_str());
+            if (idx != GL_INVALID_INDEX)
+            {
+                glUniformBlockBinding(handle(), idx, binding);
+
+                return GraphicsAPICheckError();
+            }
+        }   
+
+        return false;
+    }
+
+    void setUniform(int location, int value) override
     {
         if (isValid() && m_isBound && location >= 0)
         {
@@ -209,7 +258,7 @@ public:
         }
     }
 
-    void setUniform(int location, unsigned int value) const override
+    void setUniform(int location, unsigned int value) override
     {
         if (isValid() && m_isBound && location >= 0)
         {
@@ -217,7 +266,7 @@ public:
         }
     }
 
-    void setUniform(int location, float value) const override
+    void setUniform(int location, float value) override
     {
         if (isValid() && m_isBound && location >= 0)
         {
@@ -225,7 +274,7 @@ public:
         }
     }
 
-    void setUniform(int location, const glm::vec4& value) const override
+    void setUniform(int location, const glm::vec4& value) override
     {
         if (isValid() && m_isBound && location >= 0)
         {
@@ -233,7 +282,7 @@ public:
         }
     }
 
-    void setUniform(int location, const glm::mat4x4& value) const override
+    void setUniform(int location, const glm::mat4x4& value) override
     {
         if (isValid() && m_isBound && location >= 0)
         {
@@ -251,12 +300,83 @@ private:
     mutable bool m_isBound;
 };
 
-bool GLAllocator::allocate(Geometry& geometry)
+class GLUniformBuffer : public UniformBlockResource
 {
-    if (geometry.hasLink())
+public:
+    GLUniformBuffer(unsigned int location, size_t size)
+        : m_bindingPoint(location)
+        , m_size(size)
+    {
+        GLuint handle;
+        glGenBuffers(1, &handle);
+
+        glBindBuffer(GL_UNIFORM_BUFFER, handle);
+        glBufferData(GL_UNIFORM_BUFFER, m_size, NULL, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+        glBindBufferBase(GL_UNIFORM_BUFFER, m_bindingPoint, handle);
+
+        if (GraphicsAPICheckError())
+        {
+            m_handle = static_cast<SharedResourceHandle>(handle);
+        }
+    }
+
+    int bindingPoint() const override
+    {
+        return m_bindingPoint;
+    }
+
+    void update(const char* data) override
+    {
+        if (isValid())
+        {
+            glBindBuffer(GL_UNIFORM_BUFFER, handle());
+            glBufferSubData(GL_UNIFORM_BUFFER, NULL, m_size, data);
+            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+            GraphicsAPICheckError();
+        }
+    }
+
+    ~GLUniformBuffer()
+    {
+        if (isValid())
+        {
+            const GLuint handle = static_cast<GLuint>(m_handle);
+            glDeleteBuffers(1, &handle);
+            m_handle = INVALID_HANDLE;
+        }
+    }
+private:
+
+    int m_bindingPoint;
+    size_t m_size;
+};
+
+GraphicsAPI::GraphicsAPI()
+{
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+}
+
+GraphicsAPI::~GraphicsAPI()
+{
+    glfwTerminate();
+}
+
+bool GraphicsAPI::allocate(Geometry& geometry)
+{
+    if (geometry.linked())
     {
         return true;
     }
+
+    Logger::Info("Allocate geometry buffer (v:%i, f:%i): %iB", 
+        geometry.vertexCount(), geometry.indexCount() / 3, 
+        geometry.vertexBufferSize() + geometry.indexBufferSize());
 
     std::unique_ptr<GLVertexArray> resource(new GLVertexArray(geometry));
 
@@ -271,7 +391,7 @@ bool GLAllocator::allocate(Geometry& geometry)
 	return false;
 }
 
-GLAllocator::Result GLAllocator::compile(ShaderSource& shader)
+GraphicsAPI::Result GraphicsAPI::compile(ShaderSource& shader)
 {
     Result result = { true, std::string() };
     if (shader.id() >= 0)
@@ -288,10 +408,10 @@ GLAllocator::Result GLAllocator::compile(ShaderSource& shader)
     {
         shader.link(std::move(resource));
     }
-    return std::move(result);
+    return result;
 }
 
-GLAllocator::Result GLAllocator::link(ShaderProgram& program)
+GraphicsAPI::Result GraphicsAPI::compile(ShaderProgram& program)
 {
     // check if shader program is already linked
     Result result = { true, std::string() };
@@ -300,15 +420,16 @@ GLAllocator::Result GLAllocator::link(ShaderProgram& program)
         return std::move(result);
     }
 
+    Logger::Info("Link shader program '%s'", program.name().c_str());
+
     // compile all the shaders in the program
     unsigned int shaderbits = 0;
-    const auto shaders = program.sources();
-    for (const auto& shader : shaders)
+    for (const auto& shader : program.sources())
     {
         Result compileResult = compile(*shader);
         if (!compileResult)
         {
-            return std::move(compileResult);
+            return compileResult;
         }
 
         shaderbits |= 1 << static_cast<unsigned int>(shader->type());
@@ -351,5 +472,33 @@ GLAllocator::Result GLAllocator::link(ShaderProgram& program)
         program.link(std::move(resource));
     }
 
-    return std::move(result);
+    return result;
+}
+
+UniformBlockResourceUPtr GraphicsAPI::allocateUniformBlock(int location, size_t size)
+{
+    return UniformBlockResourceUPtr(new GLUniformBuffer(location, size));
+}
+
+bool GraphicsAPI::checkError(const char* file, int line)
+{
+    GLenum errorCode;
+    while ((errorCode = glGetError()) != GL_NO_ERROR)
+    {
+        std::string error;
+        switch (errorCode)
+        {
+        case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
+        case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
+        case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
+        case GL_STACK_OVERFLOW:                error = "STACK_OVERFLOW"; break;
+        case GL_STACK_UNDERFLOW:               error = "STACK_UNDERFLOW"; break;
+        case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
+        default:                               error = "UNHANDLED_ERROR"; break;
+        }
+
+        Logger::Error("OpenGL %s | '%s' (ln %i)", error, file, line);
+    }
+    return errorCode == GL_NO_ERROR;
 }

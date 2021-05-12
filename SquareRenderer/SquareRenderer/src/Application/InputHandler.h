@@ -2,7 +2,7 @@
 
 #include "Common/Macros.h"
 
-DECLARE_PTRS(GLWindow);
+struct GLFWwindow;
 
 enum class Key
 {
@@ -19,18 +19,18 @@ enum class Key
 class InputHandler
 {
 public:
-	InputHandler(GLWindowSPtr window);
+	InputHandler(GLFWwindow* handle);
 
 	virtual ~InputHandler();
 
-	bool keyDown(Key k);
-	bool keyPressed(Key k);
-	bool keyUp(Key k);
+	bool keyDown(Key k) const;
+	bool keyPressed(Key k) const;
+	bool keyUp(Key k) const;
 
-	void poll();
+	void poll() const;
 
 protected:
 	
-	GLWindowSPtr m_window;
+	GLFWwindow* m_handle;
 };
 

@@ -10,6 +10,7 @@ class InputHandler;
 
 DECLARE_PTRS(LogWidget);
 DECLARE_PTRS(GLWindow);
+DECLARE_PTRS(InputHandler);
 
 class GLWindow
 {
@@ -29,8 +30,9 @@ public:
 
 	bool enableGUI();
 
+	const InputHandler& inputHandler() const;
+
 protected:
-	friend InputHandler;
 
 	std::string m_title;
 
@@ -43,6 +45,7 @@ protected:
 
 	LogWidgetSPtr m_logUiWidget;
 	LogCallbackSPtr m_logCallback;
+	InputHandlerSPtr m_inputHandler;
 
 	GLFWwindow* m_handle = nullptr;
 

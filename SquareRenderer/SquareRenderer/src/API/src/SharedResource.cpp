@@ -1,4 +1,4 @@
-#include "Resources/SharedResource.h"
+#include "API/SharedResource.h"
 
 SharedResource::~SharedResource()
 {

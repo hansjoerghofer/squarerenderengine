@@ -2,6 +2,8 @@
 
 #include "Common/Macros.h"
 
+#include <glm/glm.hpp>
+
 #include <string>
 
 DECLARE_PTRS(Geometry);
@@ -18,9 +20,13 @@ public:
 
 	virtual std::string name() const;
 
+	virtual const glm::mat4x4& transform() const;
+
 	virtual GeometrySPtr geometry() const;
 
 	virtual MaterialSPtr material() const;
+
+	virtual void setTransform(const glm::mat4x4& transform);
 
 	virtual void setGeometry(GeometrySPtr geometry);
 
@@ -29,6 +35,8 @@ public:
 protected:
 
 	std::string m_name;
+
+	glm::mat4x4 m_transform;
 
 	GeometrySPtr m_geometry;
 

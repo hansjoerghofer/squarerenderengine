@@ -9,17 +9,21 @@ class Mesh : public Geometry
 {
 public:
 
-    Mesh(const std::vector<Vertex>& vertices, 
-         const std::vector<uint32_t>& indices);
+    Mesh(const std::vector<Vertex>& vertices,
+        const std::vector<uint32_t>& indices,
+        bool hasUVs = true,
+        bool hasNormals = true,
+        bool hasTangents = true
+    );
 
     Mesh(std::vector<Vertex>&& vertices,
-         std::vector<uint32_t>&& indices);
+         std::vector<uint32_t>&& indices,
+        bool hasUVs = true,
+        bool hasNormals = true,
+        bool hasTangents = true
+    );
 
     virtual ~Mesh() override;
-
-    virtual void link(GeometryResourceUPtr resource) override;
-
-    virtual bool hasLink() const override;
 
     virtual bool isStatic() const override;
 
@@ -35,14 +39,19 @@ public:
 
     virtual const std::vector<uint32_t>& indices() const override;
 
-    static MeshUPtr create(std::vector<Vertex>&& vertices,
-                           std::vector<uint32_t>&& indices);
+    virtual bool hasUVs() const override;
+
+    virtual bool hasNormals() const override;
+
+    virtual bool hasTangents() const override;
 
 protected:
-
-    GeometryResourceUPtr m_linkedResource;
 
     const std::vector<Vertex> m_vertices;
 
     const std::vector<uint32_t> m_indices;
+
+    const bool m_hasUVs;
+    const bool m_hasNormals;
+    const bool m_hasTangents;
 };

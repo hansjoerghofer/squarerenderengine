@@ -1,5 +1,6 @@
 #include "Preprocessor/ShaderParser.h"
 #include "Material/ShaderSource.h"
+#include "Common/Logger.h"
 
 #include <fstream>
 #include <exception>
@@ -21,6 +22,7 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
     const auto& foundShader = m_shaderCache.find(filepath);
     if (foundShader != m_shaderCache.end())
     {
+        Logger::Info("Load shader from cache '%s'", filepath.c_str());
         return foundShader->second;
     }
 
@@ -47,6 +49,8 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
             type, std::move(content.str()));
 
         m_shaderCache[filepath] = shader;
+
+        Logger::Info("Load shader from file '%s'", filepath.c_str());
 
         return shader;
     }

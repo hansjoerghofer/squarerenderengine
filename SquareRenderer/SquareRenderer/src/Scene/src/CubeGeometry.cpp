@@ -1,5 +1,5 @@
 #include "Scene/CubeGeometry.h"
-#include "Resources/SharedResource.h"
+#include "API/SharedResource.h"
 
 const std::vector<Vertex> CubeGeometry::s_vertices = {
     // front
@@ -63,16 +63,6 @@ CubeGeometry::~CubeGeometry()
 {
 }
 
-void CubeGeometry::link(GeometryResourceUPtr resource)
-{
-    m_linkedResource = std::move(resource);
-}
-
-bool CubeGeometry::hasLink() const
-{
-    return m_linkedResource && m_linkedResource->isValid();
-}
-
 bool CubeGeometry::isStatic() const
 {
     return true;
@@ -106,6 +96,21 @@ size_t CubeGeometry::indexBufferSize() const
 const std::vector<uint32_t>& CubeGeometry::indices() const
 {
     return s_indices;
+}
+
+bool CubeGeometry::hasUVs() const
+{
+    return true;
+}
+
+bool CubeGeometry::hasNormals() const
+{
+    return true;
+}
+
+bool CubeGeometry::hasTangents() const
+{
+    return false;
 }
 
 CubeGeometryUPtr CubeGeometry::create()

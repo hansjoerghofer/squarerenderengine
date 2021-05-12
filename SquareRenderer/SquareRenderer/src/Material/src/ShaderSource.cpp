@@ -1,5 +1,5 @@
 #include "Material/ShaderSource.h"
-#include "Resources/SharedResource.h"
+#include "API/SharedResource.h"
 
 ShaderSource::ShaderSource(ShaderType type, const std::string& source)
 	: m_type(type)

@@ -7,8 +7,6 @@ PerspectiveCamera::PerspectiveCamera(
 	: Camera(width, height, near, far)
 	, m_fov(fov)
 {
-	m_view = glm::mat4x4(1.f);
-	
 	recomputeProjection();
 }
 
@@ -23,15 +21,18 @@ float PerspectiveCamera::fov() const
 
 void PerspectiveCamera::updateResolution(int width, int height)
 {
-	Camera::updateResolution(width, height);
+	if (m_width != width || m_height != height)
+	{
+		Camera::updateResolution(width, height);
 
-	recomputeProjection();
+		recomputeProjection();
+	}
 }
 
 void PerspectiveCamera::recomputeProjection()
 {
 	const float aspectRatio =
-		static_cast<float>(height()) / static_cast<float>(width());
+		static_cast<float>(width()) / static_cast<float>(height());
 
 	m_projection = glm::perspective(
 		glm::radians(fov()), aspectRatio, near(), far());

@@ -112,7 +112,25 @@ public:
                 {
                     const char* line_start = buf + LineOffsets[line_no];
                     const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+
+                    ImVec4 color = ImVec4(.7f, .7f, .7f, 1.f);
+                    bool has_color = false;
+                    if (strncmp(line_start, "[Info]", 6) == 0)
+                    {
+                        color = ImVec4(.4f, .4f, 1.f, 1.f);
+                    }
+                    else if (strncmp(line_start, "[Warning]", 9) == 0)
+                    {
+                        color = ImVec4(1.f, .7f, 0.25f, 1.f);
+                    }
+                    else if (strncmp(line_start, "[Error]", 7) == 0)
+                    {
+                        color = ImVec4(.9f, .3f, 0.2f, 1.f);
+                    }
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, color);
                     ImGui::TextUnformatted(line_start, line_end);
+                    ImGui::PopStyleColor();
                 }
             }
             clipper.End();

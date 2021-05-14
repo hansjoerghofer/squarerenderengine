@@ -19,8 +19,6 @@ public:
 
 	void render(Geometry& geo, Material& mat);
 
-	void renderLines(Geometry& lines, ShaderProgram& program);
-
 	void setupView(const Camera& cam);
 
 	void applyState(const RendererState& state, bool force = false);

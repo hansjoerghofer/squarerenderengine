@@ -15,6 +15,13 @@ enum class DepthTest
     Never
 };
 
+enum class PrimitiveMode
+{
+    Points,
+    Lines,
+    Triangles
+};
+
 enum class Culling
 {
     None,
@@ -59,6 +66,7 @@ struct RendererState
     Culling cullingMode = Culling::Back;
     BlendFactor blendSrc = BlendFactor::None;
     BlendFactor blendDst = BlendFactor::None;
+    PrimitiveMode primitive = PrimitiveMode::Triangles;
 
     // shadow bias
     glm::vec2 depthOffset = glm::vec2(0, 0);

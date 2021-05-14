@@ -417,7 +417,7 @@ GraphicsAPI::Result GraphicsAPI::compile(ShaderProgram& program)
     Result result = { true, std::string() };
     if (program.id() >= 0)
     {
-        return std::move(result);
+        return result;
     }
 
     Logger::Info("Link shader program '%s'", program.name().c_str());
@@ -478,6 +478,11 @@ GraphicsAPI::Result GraphicsAPI::compile(ShaderProgram& program)
 UniformBlockResourceUPtr GraphicsAPI::allocateUniformBlock(int location, size_t size)
 {
     return UniformBlockResourceUPtr(new GLUniformBuffer(location, size));
+}
+
+GraphicsAPISPtr GraphicsAPI::create()
+{
+    return std::make_shared<GraphicsAPI>();
 }
 
 bool GraphicsAPI::checkError(const char* file, int line)

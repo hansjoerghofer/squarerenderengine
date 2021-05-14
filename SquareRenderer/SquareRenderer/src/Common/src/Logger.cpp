@@ -2,18 +2,25 @@
 
 void Logger::log(LogSeverity s, const std::string& message)
 {
-	for (auto it = m_callbacks.begin(); it != m_callbacks.end(); ++it)
+	try
 	{
-		if (!it->expired())
+		for (auto it = m_callbacks.begin(); it != m_callbacks.end(); ++it)
 		{
-			// invoke callback
-			(*it->lock())(s, message);
+			if (!it->expired())
+			{
+				// invoke callback
+				(*it->lock())(s, message);
+			}
+			else
+			{
+				// remove expired callbacks
+				it = m_callbacks.erase(it);
+			}
 		}
-		else
-		{
-			// remove expired callbacks
-			it = m_callbacks.erase(it);
-		}
+	}
+	catch (...) 
+	{
+		// what shall we do?
 	}
 }
 

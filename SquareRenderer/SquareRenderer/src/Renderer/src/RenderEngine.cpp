@@ -1,9 +1,12 @@
 #include "Renderer/RenderEngine.h"
+#include "Common/Logger.h"
 #include "API/GraphicsAPI.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneElement.h"
 #include "Scene/Geometry.h"
+#include "Scene/LineSet.h"
 #include "Material/Material.h"
+#include "Material/MaterialLibrary.h"
 #include "Material/ShaderProgram.h"
 #include "Material/UniformBlock.h"
 #include "Renderer/Camera.h"
@@ -32,12 +35,30 @@ struct LightsUniformBlock
 	alignas(16) glm::vec4 lightsColor[MAX_LIGHT_COUNT];
 };
 
-RenderEngine::RenderEngine(GraphicsAPISPtr api)
+RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 	: m_api(api)
+	, m_matlib(matlib)
 	, m_renderer(new Renderer())
 	, m_cameraUniformData(api->allocateUniformBlock(0, sizeof(CameraUniformBlock)))
 	, m_lightsUniformData(api->allocateUniformBlock(1, sizeof(LightsUniformBlock)))
 {
+	for (auto& [name, program] : m_matlib->programs())
+	{
+		const auto result = api->compile(*program);
+		if (!result)
+		{
+			Logger::Error("Error while linking shader program: '%s'\n%s",
+				program->name().c_str(), result.message.c_str());
+
+			continue;
+		}
+
+		// bind uniform blocks to all programs who need it
+		program->bindUniformBlock("CameraUBO", m_cameraUniformData->bindingPoint());
+		program->bindUniformBlock("LightsUBO", m_lightsUniformData->bindingPoint());
+	}
+
+
 }
 
 RenderEngine::~RenderEngine()
@@ -48,64 +69,115 @@ void RenderEngine::setScene(SceneSPtr scene)
 {
 	m_scene = scene;
 
-	// TODO outsource logic!
-	for (SceneElementSPtr elem : m_scene->sceneElements())
-	{
-		if (!elem->material()->program()
-			->bindUniformBlock("CameraUBO", m_cameraUniformData->bindingPoint()))
-		{
-			Logger::Warning("Cannot bind CameraUBO to %s", 
-				elem->material()->program()->name().c_str());
-		}
-
-		if (!elem->material()->program()
-			->bindUniformBlock("LightsUBO", m_lightsUniformData->bindingPoint()))
-		{
-			Logger::Warning("Cannot bind LightsUBO to %s",
-				elem->material()->program()->name().c_str());
-		}
-	}
+	rebuildCommandList();
 }
 
-void RenderEngine::render(const Camera& camera)
+void RenderEngine::setMainCamera(CameraSPtr camera)
 {
-	updateCameraUniformData(camera);
+	m_mainCamera = camera;
+
+	rebuildCommandList();
+}
+
+void RenderEngine::render()
+{
 	updateLightsUniformData();
 
-	RendererState state;
-	state.clearColor = true;
-	//state.enableWireframe = true;
-	state.color = glm::vec4(.6f, .6f, .8f, 1);
-
-	m_renderer->setupView(camera);
-	m_renderer->applyState(state);
-
-	for (SceneElementSPtr elem : m_scene->sceneElements())
+	CameraSPtr cachedCam;
+	for (const RenderCommand& cmd : m_renderCommandList)
 	{
-		m_renderer->render(*elem->geometry(), *elem->material());
+		if (cmd.camera != cachedCam)
+		{
+			updateCameraUniformData(*cmd.camera);
+			m_renderer->setupView(*cmd.camera);
+			cachedCam = cmd.camera;
+		}
+
+		m_renderer->applyState(cmd.state);
+
+		for (const RenderElement& elem : cmd.elements)
+		{
+			// TODO override logic!
+			MaterialSPtr mat = cmd.overrideMaterial ? cmd.overrideMaterial : elem.material;
+			if (mat)
+			{
+				m_renderer->render(*elem.geometry, *mat);
+			}
+		}
 	}
 }
 
-void RenderEngine::renderLines(const Camera& camera, Geometry& pointset, ShaderProgram& progam)
+void RenderEngine::rebuildCommandList()
 {
-	updateCameraUniformData(camera);
+	m_renderCommandList.clear();
 
-	// TODO outsource logic!
-	if (!progam.bindUniformBlock("CameraUBO", m_cameraUniformData->bindingPoint()))
+	if (!m_mainCamera)
 	{
-		Logger::Warning("Cannot bind CameraUBO to %s", progam.name().c_str());
+		return;
 	}
 
-	RendererState state;
-	state.clearColor = false;
-	state.clearDepth = false;
-	state.writeDepth = false;
-	state.cullingMode = Culling::None;
+	// scene
+	if (m_scene)
+	{
+		RenderCommand cmd;
+		cmd.camera = m_mainCamera;
+		cmd.state.clearColor = true;
+		//cmd.state.enableWireframe = true;
+		cmd.state.color = glm::vec4(.6f, .6f, .8f, 1);
 
-	m_renderer->setupView(camera);
-	m_renderer->applyState(state);
+		cmd.elements.reserve(m_scene->sceneElements().size());
+		for (SceneElementSPtr elem : m_scene->sceneElements())
+		{
+			cmd.elements.emplace_back(elem->geometry(), elem->material());
+		}
 
-	m_renderer->renderLines(pointset, progam);
+		m_renderCommandList.emplace_back(std::move(cmd));
+	}
+
+	if(m_gizmoGeometry)
+	{
+		RenderCommand cmd;
+		cmd.camera = m_mainCamera;
+		cmd.state.clearColor = false;
+		cmd.state.clearDepth = false;
+		cmd.state.writeDepth = false;
+		cmd.state.cullingMode = Culling::None;
+		cmd.state.primitive = PrimitiveMode::Lines;
+
+		cmd.elements.emplace_back(m_gizmoGeometry, m_gizmoMaterial);
+
+		m_renderCommandList.emplace_back(std::move(cmd));
+	}
+}
+
+void RenderEngine::setupGizmos(const std::string& programName)
+{
+	m_gizmoMaterial = m_matlib->instanciate(programName);
+	if (!m_gizmoMaterial)
+	{
+		Logger::Error("Error could not find shader program '%s'.", programName.c_str());
+		return;
+	}
+
+	constexpr glm::vec3 origin(0, 0, 0);
+	constexpr glm::vec3 axisX(1, 0, 0);
+	constexpr glm::vec3 axisY(0, 1, 0);
+	constexpr glm::vec3 axisZ(0, 0, 1);
+
+	m_gizmoGeometry.reset(new LineSet({
+			origin, axisX,
+			origin, axisY,
+			origin, axisZ
+		}, { axisX, axisY, axisZ }));
+
+	if (!m_api->allocate(*m_gizmoGeometry))
+	{
+		Logger::Error("Error while allocating gizmo geometry buffers.");
+
+		m_gizmoGeometry.reset();
+	}
+
+	rebuildCommandList();
 }
 
 void RenderEngine::updateCameraUniformData(const Camera& camera)

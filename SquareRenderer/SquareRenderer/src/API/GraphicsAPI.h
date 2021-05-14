@@ -26,12 +26,14 @@ public:
 		bool success;
 		std::string message;
 
-		operator bool() { return success; };
+		operator bool() const { return success; };
 	};
 
 	Result compile(ShaderProgram& program);
 
 	UniformBlockResourceUPtr allocateUniformBlock(int location, size_t size);
+
+	static GraphicsAPISPtr create();
 
 	static bool checkError(const char* file, int line);
 

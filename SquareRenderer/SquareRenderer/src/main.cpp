@@ -6,15 +6,17 @@
 #include "Application/InputHandler.h"
 
 #include "Preprocessor/ShaderParser.h"
+#include "Preprocessor/MaterialImporter.h"
 
 #include "Material/ShaderSource.h"
 #include "Material/ShaderProgram.h"
 #include "Material/Material.h"
+#include "Material/MaterialLibrary.h"
 
 #include "Scene/Scene.h"
 #include "Scene/SceneElement.h"
 #include "Scene/CubeGeometry.h"
-#include "Scene/Mesh.h"
+#include "Scene/LineSet.h"
 
 #include "Renderer/RenderEngine.h"
 #include "Renderer/PerspectiveCamera.h"
@@ -23,26 +25,6 @@
 #include <glm/gtx/transform.hpp>
 
 #include <iostream>
-#include <fstream>
-
-ShaderProgramSPtr loadProgram(GraphicsAPISPtr api, ShaderParser& parser, const std::string& name, std::vector<std::string> shaderPaths)
-{
-    ShaderProgramSPtr program = std::make_shared<ShaderProgram>(name);
-    for (const std::string& path : shaderPaths)
-    {
-        program->addShaderSource(parser.loadFromFile(path));
-    }
-
-    auto result = api->compile(*program);
-    if (!result)
-    {
-        Logger::Error("Error while linking shader program: '%s'\n%s",
-            program->name().c_str(), result.message.c_str());
-
-        return nullptr;
-    }
-    return program;
-}
 
 int main()
 {
@@ -53,66 +35,47 @@ int main()
         }
     );
 
-    GraphicsAPISPtr api = std::make_shared<GraphicsAPI>();
+    GraphicsAPISPtr api = GraphicsAPI::create();
 
-    GLWindowSPtr mainWindow = GLWindowSPtr(
-        new GLWindow(1280, 720, "Square Renderer"));
+    GLWindowSPtr mainWindow = GLWindowSPtr(new GLWindow(1280, 720, "Square Renderer"));
     mainWindow->enableGUI();
 
-    ShaderProgramSPtr blinnPhongProgram;
-    ShaderProgramSPtr lineProgram;
-    GeometrySPtr cubeGeo;
-    GeometrySPtr coordinatePointSet;
+    MaterialLibrarySPtr matLib;
     try
     {
-        ShaderParser parser;
-        ScopedTimerLog t("load shaders");
-
-        blinnPhongProgram = loadProgram(api, parser, "BlinnPhong", { "Resources/Shaders/Lit/BlinnPhong.vert", "Resources/Shaders/Lit/BlinnPhong.frag" });
-        lineProgram = loadProgram(api, parser, "Line", { "Resources/Shaders/Line.vert", "Resources/Shaders/Line.frag" });
-
-        coordinatePointSet = GeometrySPtr(new Mesh({ 
-            { {0,0,0}, {0,0}, {1,0,0} }, // X start
-            { {1,0,0}, {0,0}, {1,0,0} }, // X end
-            { {0,0,0}, {0,0}, {0,1,0} }, // Y start
-            { {0,1,0}, {0,0}, {0,1,0} }, // Y end
-            { {0,0,0}, {0,0}, {0,0,1} }, // Z start
-            { {0,0,1}, {0,0}, {0,0,1} }  // Z end
-            }, {}, true, true, false));
-        if (!api->allocate(*coordinatePointSet))
-        {
-            Logger::Error("Error while allocating geometry buffers.");
-        }
-
-        cubeGeo = GeometrySPtr(new CubeGeometry());
-        if (!api->allocate(*cubeGeo))
-        {
-            Logger::Error("Error while allocating geometry buffers.");
-        }
+        ScopedTimerLog t("Material Library import");
+        MaterialImporter matImporter(api);
+        matLib = matImporter.importFromFile("Resources/Shaders/library.config");
     }
     catch (const std::runtime_error& e)
     {
-        Logger::Error(e.what());
+        Logger::Error("Material import: %s", e.what());
+    }
 
-        return -1;
+    GeometrySPtr cubeGeo = GeometrySPtr(new CubeGeometry());
+    if (!api->allocate(*cubeGeo))
+    {
+        Logger::Error("Error while allocating geometry buffers.");
     }
 
     SceneElementSPtr elem = SceneElementSPtr(new SceneElement("Cube"));
     elem->setGeometry(cubeGeo);
-    elem->setMaterial(MaterialSPtr(new Material("BlinnPhong", blinnPhongProgram)));
+    elem->setMaterial(matLib->instanciate("Lit.BlinnPhong"));
 
     elem->material()->setUniform("albedoColor", glm::vec4(0.6, 0.6, 0.6, 1));
-    elem->material()->setUniform("shininessFactor", 0.8f);
+    elem->material()->setUniform("shininessFactor", 0.3f);
 
     SceneSPtr scene = SceneSPtr(new Scene());
     scene->addSceneElement(elem);
 
-    RenderEngineUPtr renderEngine = RenderEngineUPtr(new RenderEngine(api));
-    renderEngine->setScene(scene);
-
     CameraSPtr camera = CameraSPtr(new PerspectiveCamera(
         mainWindow->width(), mainWindow->height(), 60, .1f, 10.f));
     camera->lookAt(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0));
+
+    RenderEngineUPtr renderEngine = std::make_unique<RenderEngine>(api, matLib);
+    renderEngine->setupGizmos("Debug.Line");
+    renderEngine->setScene(scene);
+    renderEngine->setMainCamera(camera);
 
     Timer frameTimer;
     while (mainWindow->isOpen())
@@ -134,8 +97,7 @@ int main()
 
         // ------------------ update stuff -----------------------------
 
-        elem->setTransform(glm::rotate(static_cast<float>(deltaTime), 
-            glm::vec3(0, 1, 0)) * elem->transform());
+        elem->setTransform(glm::rotate(static_cast<float>(deltaTime), glm::vec3(0, 1, 0)) * elem->transform());
 
         // TODO update somewhere else
         camera->updateResolution(mainWindow->width(), mainWindow->height());
@@ -144,9 +106,7 @@ int main()
 
         // ------------------ render stuff -----------------------------
 
-        renderEngine->render(*camera);
-
-        renderEngine->renderLines(*camera, *coordinatePointSet, *lineProgram);
+        renderEngine->render();
 
         mainWindow->renderGUI();
 

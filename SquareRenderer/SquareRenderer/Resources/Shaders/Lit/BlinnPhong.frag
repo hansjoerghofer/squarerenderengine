@@ -10,12 +10,12 @@ in VSData
     vec3 fragPosWS;
 } vs_in;
 
-uniform vec4 albedoColor;
-uniform float shininessFactor;
+uniform vec4 albedoColor = vec4(1,1,1,1);
+uniform float shininessFactor = 0.5;
 
 void main() 
 {
-    float shininess = 128.0 * shininessFactor;
+    float shininess = 128.0 * shininessFactor + 1;
 
     vec3 viewDirWS = normalize(_invV[3].xyz - vs_in.fragPosWS);
 

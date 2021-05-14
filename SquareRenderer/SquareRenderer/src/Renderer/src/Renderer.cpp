@@ -50,6 +50,17 @@ inline GLenum translate(Culling culling)
     }
 }
 
+inline GLenum translate(PrimitiveMode mode)
+{
+    switch (mode)
+    {
+    case PrimitiveMode::Points:     return GL_POINTS;
+    case PrimitiveMode::Lines:      return GL_LINES;
+    case PrimitiveMode::Triangles: 
+    default:                        return GL_TRIANGLES;
+    }
+}
+
 inline GLboolean translate(bool flag)
 {
     return flag ? GL_TRUE : GL_FALSE;
@@ -66,32 +77,20 @@ void Renderer::render(Geometry& geo, Material& mat)
     mat.bind();
     geo.bind();
 
+    GLenum primitiveMode = translate(m_currentState.primitive);
     if (geo.indexCount() > 0)
     {
         const GLsizei indexCount = static_cast<GLsizei>(geo.indexCount());
-        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+        glDrawElements(primitiveMode, indexCount, GL_UNSIGNED_INT, 0);
     }
     else
     {
         const GLsizei vertexCount = static_cast<GLsizei>(geo.vertexCount());
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+        glDrawArrays(primitiveMode, 0, vertexCount);
     }
 
     geo.unbind();
     mat.unbind();
-
-    GraphicsAPICheckError();
-}
-
-void Renderer::renderLines(Geometry& lines, ShaderProgram& program)
-{
-    program.bind();
-    lines.bind();
-
-    glDrawArrays(GL_LINES, 0, lines.vertexCount());
-
-    lines.unbind();
-    program.unbind();
 
     GraphicsAPICheckError();
 }

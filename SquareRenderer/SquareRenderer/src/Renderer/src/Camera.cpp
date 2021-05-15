@@ -54,12 +54,12 @@ const glm::vec3& Camera::viewDirection() const
 	return m_direction;
 }
 
-const glm::mat4x4& Camera::projectionMatrix() const
+const glm::mat4& Camera::projectionMatrix() const
 {
 	return m_projection;
 }
 
-const glm::mat4x4& Camera::viewMatrix() const
+const glm::mat4& Camera::viewMatrix() const
 {
 	return m_view;
 }

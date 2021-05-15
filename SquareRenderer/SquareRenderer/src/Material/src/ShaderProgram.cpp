@@ -107,7 +107,7 @@ bool ShaderProgram::setUniform(int location, const UniformValue& value)
 	case UniformValue::Type::Vec4:
 		return setGenericUniform(location, std::any_cast<glm::vec4>(value.value));
 	case UniformValue::Type::Mat4x4:
-		return setGenericUniform(location, std::any_cast<glm::mat4x4>(value.value));
+		return setGenericUniform(location, std::any_cast<glm::mat4>(value.value));
 	default:
 		return false;
 	}

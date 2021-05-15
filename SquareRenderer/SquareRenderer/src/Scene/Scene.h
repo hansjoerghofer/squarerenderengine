@@ -3,20 +3,39 @@
 #include "Common/Macros.h"
 
 #include <vector>
+#include <stack>
 
-DECLARE_PTRS(SceneElement);
+DECLARE_PTRS(SceneNode);
 DECLARE_PTRS(Scene);
 
 class Scene
 {
 public:
+    class Traverser;
 
-	void addSceneElement(SceneElementSPtr element);
+	Scene(SceneNodeSPtr root);
 
-	const std::vector<SceneElementSPtr>& sceneElements() const;
-	
+	SceneNodeSPtr root() const;
+
+    Traverser traverser() const;
+
+    class Traverser
+    {
+    public:
+        Traverser(SceneNodeSPtr node);
+
+        bool hasNext() const;
+
+        SceneNodeSPtr next();
+
+    private:
+        SceneNodeSPtr m_node;
+
+        std::stack<SceneNodeSPtr> m_stack;
+    };
+
 protected:
 
-	std::vector<SceneElementSPtr> m_elements;
+	SceneNodeSPtr m_root;
 };
 

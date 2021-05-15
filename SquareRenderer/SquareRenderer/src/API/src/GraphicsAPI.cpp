@@ -282,7 +282,7 @@ public:
         }
     }
 
-    void setUniform(int location, const glm::mat4x4& value) override
+    void setUniform(int location, const glm::mat4& value) override
     {
         if (isValid() && m_isBound && location >= 0)
         {

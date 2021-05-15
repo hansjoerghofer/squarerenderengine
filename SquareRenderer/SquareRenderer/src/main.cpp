@@ -5,7 +5,7 @@
 #include "Application/GLWindow.h"
 #include "Application/InputHandler.h"
 
-#include "Preprocessor/ShaderParser.h"
+#include "Preprocessor/SceneImporter.h"
 #include "Preprocessor/MaterialImporter.h"
 
 #include "Material/ShaderSource.h"
@@ -14,9 +14,8 @@
 #include "Material/MaterialLibrary.h"
 
 #include "Scene/Scene.h"
-#include "Scene/SceneElement.h"
+#include "Scene/SceneNode.h"
 #include "Scene/CubeGeometry.h"
-#include "Scene/LineSet.h"
 
 #include "Renderer/RenderEngine.h"
 #include "Renderer/PerspectiveCamera.h"
@@ -52,7 +51,7 @@ int main()
         Logger::Error("Material import: %s", e.what());
     }
 
-    GeometrySPtr cubeGeo = GeometrySPtr(new CubeGeometry());
+    /*GeometrySPtr cubeGeo = GeometrySPtr(new CubeGeometry());
     if (!api->allocate(*cubeGeo))
     {
         Logger::Error("Error while allocating geometry buffers.");
@@ -66,7 +65,14 @@ int main()
     elem->material()->setUniform("shininessFactor", 0.3f);
 
     SceneSPtr scene = SceneSPtr(new Scene());
-    scene->addSceneElement(elem);
+    scene->addSceneElement(elem);*/
+
+    SceneSPtr scene;
+    {
+        ScopedTimerLog t("Scene import");
+        SceneImporter si(api, matLib);
+        scene = si.importFromFile("Resources/Scenes/primitives.fbx");
+    }
 
     CameraSPtr camera = CameraSPtr(new PerspectiveCamera(
         mainWindow->width(), mainWindow->height(), 60, .1f, 10.f));
@@ -97,12 +103,24 @@ int main()
 
         // ------------------ update stuff -----------------------------
 
-        elem->setTransform(glm::rotate(static_cast<float>(deltaTime), glm::vec3(0, 1, 0)) * elem->transform());
-
         // TODO update somewhere else
         camera->updateResolution(mainWindow->width(), mainWindow->height());
-        elem->material()->setUniform("M", elem->transform());
-        elem->material()->setUniform("N", glm::transpose(glm::inverse(elem->transform())));
+
+        
+
+        // TODO how to update these just before rendering!
+        // material instance could be shared!
+        auto t = scene->traverser();
+        while (t.hasNext())
+        {
+            SceneNodeSPtr node = t.next();
+            if (node->isDrawable())
+            {
+                node->material()->setUniform("M", node->worldTransform());
+                node->material()->setUniform("N", 
+                    glm::transpose(glm::inverse(node->worldTransform())));
+            }
+        }
 
         // ------------------ render stuff -----------------------------
 

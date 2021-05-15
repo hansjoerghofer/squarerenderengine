@@ -9,9 +9,24 @@ void MaterialLibrary::registerProgram(ShaderProgramSPtr program)
 	m_registeredPrograms[program->name()] = program;
 }
 
-ShaderProgramSPtr MaterialLibrary::findProgram(const std::string& name)
+ShaderProgramSPtr MaterialLibrary::findProgram(const std::string& name) const
 {
-	return m_registeredPrograms[name];
+	auto found = m_registeredPrograms.find(name);
+	if (found != m_registeredPrograms.end())
+	{
+		return found->second;
+	}
+	return nullptr;
+}
+
+MaterialSPtr MaterialLibrary::findMaterial(const std::string& name) const
+{
+	auto found = m_namedInstances.find(name);
+	if (found != m_namedInstances.end())
+	{
+		return found->second;
+	}
+	return nullptr;
 }
 
 const std::unordered_map<std::string, ShaderProgramSPtr>& MaterialLibrary::programs() const
@@ -21,18 +36,31 @@ const std::unordered_map<std::string, ShaderProgramSPtr>& MaterialLibrary::progr
 
 MaterialUPtr MaterialLibrary::instanciate(const std::string& programName) const
 {
-	auto found = m_registeredPrograms.find(programName);
-	if (found != m_registeredPrograms.end())
+	ShaderProgramSPtr program = findProgram(programName);
+	if (program)
 	{
-		ShaderProgramSPtr program = found->second;
-
 		std::stringstream name(program->name());
 		name << "_mat(" << program.use_count() << ")";
 
 		return MaterialUPtr(new Material(name.str(), program));
 	}
 
-	return MaterialUPtr();
+	return nullptr;
+}
+
+MaterialSPtr MaterialLibrary::instanciate(const std::string& programName, const std::string& instanceName)
+{
+	ShaderProgramSPtr program = findProgram(programName);
+	if (program)
+	{
+		MaterialSPtr mat = MaterialSPtr(new Material(instanceName, program));
+
+		m_namedInstances[instanceName] = mat;
+
+		return mat;
+	}
+
+	return nullptr;
 }
 
 MaterialLibraryUPtr MaterialLibrary::create()

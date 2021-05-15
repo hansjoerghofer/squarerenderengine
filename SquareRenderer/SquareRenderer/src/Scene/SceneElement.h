@@ -20,13 +20,13 @@ public:
 
 	virtual std::string name() const;
 
-	virtual const glm::mat4x4& transform() const;
+	virtual const glm::mat4& transform() const;
 
 	virtual GeometrySPtr geometry() const;
 
 	virtual MaterialSPtr material() const;
 
-	virtual void setTransform(const glm::mat4x4& transform);
+	virtual void setTransform(const glm::mat4& transform);
 
 	virtual void setGeometry(GeometrySPtr geometry);
 
@@ -36,7 +36,7 @@ protected:
 
 	std::string m_name;
 
-	glm::mat4x4 m_transform;
+	glm::mat4 m_transform;
 
 	GeometrySPtr m_geometry;
 

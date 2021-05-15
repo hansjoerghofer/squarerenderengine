@@ -28,9 +28,9 @@ public:
 
 	virtual const glm::vec3& viewDirection() const;
 
-	virtual const glm::mat4x4& projectionMatrix() const;
+	virtual const glm::mat4& projectionMatrix() const;
 
-	virtual const glm::mat4x4& viewMatrix() const;
+	virtual const glm::mat4& viewMatrix() const;
 
 	virtual void updateResolution(int width, int height);
 
@@ -52,6 +52,6 @@ protected:
 	glm::vec3 m_position;
 	glm::vec3 m_direction;
 
-	glm::mat4x4 m_projection;
-	glm::mat4x4 m_view;
+	glm::mat4 m_projection;
+	glm::mat4 m_view;
 };

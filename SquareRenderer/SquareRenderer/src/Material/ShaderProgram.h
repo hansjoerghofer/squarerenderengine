@@ -82,7 +82,7 @@ struct UniformValue
 	UniformValue(unsigned int v) : value(v), type(Type::UInt) {}
 	UniformValue(float v) : value(v), type(Type::Float) {}
 	UniformValue(const glm::vec4& v) : value(v), type(Type::Vec4) {}
-	UniformValue(const glm::mat4x4& v) : value(v), type(Type::Mat4x4) {}
+	UniformValue(const glm::mat4& v) : value(v), type(Type::Mat4x4) {}
 };
 
 class ShaderProgramResource : public SharedResource
@@ -97,7 +97,7 @@ public:
 	virtual void setUniform(int location, unsigned int value) = 0;
 	virtual void setUniform(int location, float value) = 0;
 	virtual void setUniform(int location, const glm::vec4& value) = 0;
-	virtual void setUniform(int location, const glm::mat4x4& value) = 0;
+	virtual void setUniform(int location, const glm::mat4& value) = 0;
 
 	virtual bool bindUniformBlock(const std::string& name, int binding) = 0;
 };

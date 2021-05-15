@@ -2,7 +2,7 @@
 #include "Common/Logger.h"
 #include "API/GraphicsAPI.h"
 #include "Scene/Scene.h"
-#include "Scene/SceneElement.h"
+#include "Scene/SceneNode.h"
 #include "Scene/Geometry.h"
 #include "Scene/LineSet.h"
 #include "Material/Material.h"
@@ -125,10 +125,23 @@ void RenderEngine::rebuildCommandList()
 		//cmd.state.enableWireframe = true;
 		cmd.state.color = glm::vec4(.6f, .6f, .8f, 1);
 
-		cmd.elements.reserve(m_scene->sceneElements().size());
+		/*cmd.elements.reserve(m_scene->sceneElements().size());
 		for (SceneElementSPtr elem : m_scene->sceneElements())
 		{
-			cmd.elements.emplace_back(elem->geometry(), elem->material());
+			if (elem->geometry() && elem->material())
+			{
+				cmd.elements.emplace_back(elem->geometry(), elem->material());
+			}
+		}*/
+
+		auto t = m_scene->traverser();
+		while (t.hasNext())
+		{
+			SceneNodeSPtr node = t.next();
+			if (node->isDrawable())
+			{
+				cmd.elements.emplace_back(node->geometry(), node->material());
+			}
 		}
 
 		m_renderCommandList.emplace_back(std::move(cmd));
@@ -218,11 +231,11 @@ void RenderEngine::updateLightsUniformData()
 	data.numLights = 0;
 	
 	data.lightsPosWS[data.numLights] = glm::vec4(1, 1, 1, 1);
-	data.lightsColor[data.numLights] = glm::vec4(0.5, 0.5, 1, 1);
+	data.lightsColor[data.numLights] = glm::vec4(0.2, 0.2, 0.7, 1);
 	data.numLights++;
 
 	data.lightsPosWS[data.numLights] = glm::normalize(glm::vec4(1, -1, -0.5, 0));
-	data.lightsColor[data.numLights] = glm::vec4(0.5, 1, 0.5, 1);
+	data.lightsColor[data.numLights] = glm::vec4(0.2, 0.7, 0.1, 1);
 	data.numLights++;
 
 	if (m_lightsUniformData && m_lightsUniformData->isValid())

@@ -1,11 +1,47 @@
 #include "Scene/Scene.h"
+#include "Scene/SceneNode.h"
 
-void Scene::addSceneElement(SceneElementSPtr element)
+Scene::Scene(SceneNodeSPtr root)
+	: m_root(root)
 {
-	m_elements.push_back(element);
 }
 
-const std::vector<SceneElementSPtr>& Scene::sceneElements() const
+SceneNodeSPtr Scene::root() const
 {
-	return m_elements;
+	return m_root;
+}
+
+Scene::Traverser Scene::traverser() const
+{
+	return Traverser(m_root);
+}
+
+Scene::Traverser::Traverser(SceneNodeSPtr node)
+	: m_node(node)
+{
+	for (const SceneNodeSPtr& node : m_node->children())
+	{
+		m_stack.push(node);
+	}
+}
+
+bool Scene::Traverser::hasNext() const
+{
+	return !m_stack.empty();
+}
+
+SceneNodeSPtr Scene::Traverser::next()
+{
+	if (m_stack.empty()) return nullptr;
+
+	SceneNodeSPtr node = m_stack.top();
+	m_stack.pop();
+
+	const std::list<SceneNodeSPtr>& children = node->children();
+	for (auto i = children.rbegin(); i != children.rend(); ++i)
+	{
+		m_stack.push(*i);
+	}
+
+	return node;
 }

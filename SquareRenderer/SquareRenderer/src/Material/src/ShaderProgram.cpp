@@ -1,5 +1,6 @@
 #include "Material/ShaderProgram.h"
 #include "Material/ShaderSource.h"
+#include "Texture/ITexture.h"
 
 ShaderProgram::ShaderProgram(const std::string& name)
 	: m_name(name)
@@ -18,9 +19,15 @@ const std::string& ShaderProgram::name() const
 	return m_name;
 }
 
-void ShaderProgram::link(ShaderProgramResourceUPtr resource)
+void ShaderProgram::link(IShaderProgramResourceUPtr resource)
 {
 	m_linkedResource = std::move(resource);
+
+	// TODO use defaults from shader source (if given)!
+	for (const auto& [name, metaInfo] : m_nameToUniformMetaInfo)
+	{
+		setUniformDefault(name, UniformValue(metaInfo.defaultValue));
+	}
 }
 
 int ShaderProgram::id() const
@@ -35,9 +42,7 @@ int ShaderProgram::id() const
 
 void ShaderProgram::bind()
 {
-	if (!m_isBound 
-		&& m_linkedResource 
-		&& m_linkedResource->isValid())
+	if (!m_isBound && m_linkedResource)
 	{
 		m_linkedResource->bind();
 		m_isBound = true;
@@ -48,18 +53,12 @@ void ShaderProgram::bind()
 
 void ShaderProgram::unbind()
 {
-	if (m_isBound
-		&& m_linkedResource
-		&& m_linkedResource->isValid())
+	if (m_isBound && m_linkedResource)
 	{
 		m_linkedResource->unbind();
-		m_isBound = false;
 	}
-}
 
-bool ShaderProgram::isBound() const
-{
-	return m_isBound && m_linkedResource && m_linkedResource->isValid();
+	m_isBound = false;
 }
 
 void ShaderProgram::addShaderSource(ShaderSourceSPtr source)
@@ -69,24 +68,28 @@ void ShaderProgram::addShaderSource(ShaderSourceSPtr source)
 		return;
 	}
 
-	// check if shader replaces another one of the same type
+	// check if shader collides with another one of the same type
 	for (size_t i = 0; i < m_sources.size(); ++i)
 	{
 		if (m_sources[i]->type() == source->type())
 		{
-			m_sources[i] = source;
 			return;
 		}
 	}
 
 	// add shader to list
 	m_sources.push_back(source);
+
+	for (const auto& metaInfo : source->uniformMetaInfo())
+	{
+		m_nameToUniformMetaInfo[metaInfo.name] = metaInfo;
+	}
 }
 
 template<typename T>
 bool ShaderProgram::setGenericUniform(int location, const T& value)
 {
-	if (isBound() && location != -1)
+	if (m_isBound && m_linkedResource && location != -1)
 	{
 		m_linkedResource->setUniform(location, value);
 		return true;
@@ -98,15 +101,13 @@ bool ShaderProgram::setUniform(int location, const UniformValue& value)
 {
 	switch (value.type)
 	{
-	case UniformValue::Type::Int:
+	case UniformType::Int:
 		return setGenericUniform(location, std::any_cast<int>(value.value));
-	case UniformValue::Type::UInt:
-		return setGenericUniform(location, std::any_cast<unsigned int>(value.value));
-	case UniformValue::Type::Float:
+	case UniformType::Float:
 		return setGenericUniform(location, std::any_cast<float>(value.value));
-	case UniformValue::Type::Vec4:
+	case UniformType::Vec4:
 		return setGenericUniform(location, std::any_cast<glm::vec4>(value.value));
-	case UniformValue::Type::Mat4x4:
+	case UniformType::Mat4:
 		return setGenericUniform(location, std::any_cast<glm::mat4>(value.value));
 	default:
 		return false;
@@ -119,9 +120,19 @@ bool ShaderProgram::setUniform(const std::string& name, const UniformValue& valu
 	return setUniform(location, value);
 }
 
+const std::unordered_map<std::string, UniformMetaInfo>& ShaderProgram::uniformMetaInfo() const
+{
+	return m_nameToUniformMetaInfo;
+}
+
+const std::unordered_map<std::string, ITextureSPtr>& ShaderProgram::defaultTextures() const
+{
+	return m_defaultUniformTextures;
+}
+
 bool ShaderProgram::setUniformDefault(const std::string& name, UniformValue&& value)
 {
-	if (m_linkedResource && m_linkedResource->isValid())
+	if (m_linkedResource)
 	{
 		const int location = fetchUniformLocation(name);
 
@@ -135,9 +146,19 @@ bool ShaderProgram::setUniformDefault(const std::string& name, UniformValue&& va
 	return false;
 }
 
+bool ShaderProgram::setUniformDefault(const std::string& name, ITextureSPtr texture)
+{
+	if (fetchUniformLocation(name) != -1)
+	{
+		m_defaultUniformTextures[name] = texture;
+		return true;
+	}
+	return false;
+}
+
 bool ShaderProgram::bindUniformBlock(const std::string& name, int bindingPoint)
 {
-	if (m_linkedResource && m_linkedResource->isValid())
+	if (m_linkedResource)
 	{
 		return m_linkedResource->bindUniformBlock(name, bindingPoint);
 	}
@@ -147,17 +168,17 @@ bool ShaderProgram::bindUniformBlock(const std::string& name, int bindingPoint)
 
 int ShaderProgram::fetchUniformLocation(const std::string& name)
 {
-	const auto& found = m_nameToUniformLocation.find(name);
-	if (found != m_nameToUniformLocation.end())
+	const auto& found = m_uniformLocationCache.find(name);
+	if (found != m_uniformLocationCache.end())
 	{
 		return found->second;
 	}
-	else if(m_linkedResource && m_linkedResource->isValid())
+	else if(m_linkedResource)
 	{
 		const int location = m_linkedResource->uniformLocation(name);
 		if (location != -1)
 		{
-			m_nameToUniformLocation[name] = location;
+			m_uniformLocationCache[name] = location;
 			return location;
 		}
 	}

@@ -2,17 +2,18 @@
 
 #include "Common/Macros.h"
 #include "API/SharedResource.h"
+#include "Material/Uniform.h"
 
 #include <glm/glm.hpp>
 
-#include <any>
 #include <string>
 #include <vector>
 #include <unordered_map>
 
 struct UniformValue;
 DECLARE_PTRS(ShaderSource);
-DECLARE_PTRS(ShaderProgramResource);
+DECLARE_PTRS(ShaderProgram);
+DECLARE_PTRS(ITexture);
 
 class ShaderProgram
 {
@@ -23,7 +24,7 @@ public:
 
 	const std::string& name() const;
 
-	void link(ShaderProgramResourceUPtr resource);
+	void link(IShaderProgramResourceUPtr resource);
 
 	int id() const;
 
@@ -31,15 +32,18 @@ public:
 
 	void unbind();
 
-	bool isBound() const;
-
 	const std::vector<ShaderSourceSPtr>& sources() const;
+
+	const std::unordered_map<std::string, UniformMetaInfo>& uniformMetaInfo() const;
+
+	const std::unordered_map<std::string, ITextureSPtr>& defaultTextures() const;
 
 	void addShaderSource(ShaderSourceSPtr source);
 
 	bool setUniform(const std::string& name, const UniformValue& value);
 
 	bool setUniformDefault(const std::string& name, UniformValue&& value);
+	bool setUniformDefault(const std::string& name, ITextureSPtr texture);
 
 	bool bindUniformBlock(const std::string& name, int bindingPoint);
 
@@ -47,7 +51,7 @@ private:
 
 	std::string m_name;
 
-	ShaderProgramResourceUPtr m_linkedResource;
+	IShaderProgramResourceUPtr m_linkedResource;
 
 	bool m_isBound;
 
@@ -55,7 +59,11 @@ private:
 
 	std::unordered_map<int, UniformValue> m_defaultUniformStorage;
 
-	std::unordered_map<std::string, int> m_nameToUniformLocation;
+	std::unordered_map<std::string, ITextureSPtr> m_defaultUniformTextures;
+
+	std::unordered_map<std::string, int> m_uniformLocationCache;
+
+	std::unordered_map<std::string, UniformMetaInfo> m_nameToUniformMetaInfo;
 
 	int fetchUniformLocation(const std::string& name);
 
@@ -65,40 +73,5 @@ private:
 
 	template<typename T>
 	bool setGenericUniform(int location, const T& value);
-};
-
-struct UniformValue
-{
-	enum class Type
-	{
-		Int, UInt, Float, Vec4, Mat4x4
-	};
-
-	Type type;
-	std::any value;
-
-	UniformValue() : UniformValue(0) {}
-	UniformValue(int v) : value(v), type(Type::Int) {}
-	UniformValue(unsigned int v) : value(v), type(Type::UInt) {}
-	UniformValue(float v) : value(v), type(Type::Float) {}
-	UniformValue(const glm::vec4& v) : value(v), type(Type::Vec4) {}
-	UniformValue(const glm::mat4& v) : value(v), type(Type::Mat4x4) {}
-};
-
-class ShaderProgramResource : public SharedResource
-{
-public:
-	virtual void bind() = 0;
-	virtual void unbind() = 0;
-
-	virtual int uniformLocation(const std::string& name) const = 0;
-
-	virtual void setUniform(int location, int value) = 0;
-	virtual void setUniform(int location, unsigned int value) = 0;
-	virtual void setUniform(int location, float value) = 0;
-	virtual void setUniform(int location, const glm::vec4& value) = 0;
-	virtual void setUniform(int location, const glm::mat4& value) = 0;
-
-	virtual bool bindUniformBlock(const std::string& name, int binding) = 0;
 };
 

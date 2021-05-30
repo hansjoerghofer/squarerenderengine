@@ -3,6 +3,7 @@
 #include "Common/Macros.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RenderCommand.h"
+#include "Renderer/UniformBlockData.h"
 
 #include <list>
 
@@ -11,8 +12,11 @@ DECLARE_PTRS(Camera);
 DECLARE_PTRS(GraphicsAPI);
 DECLARE_PTRS(RenderEngine);
 DECLARE_PTRS(MaterialLibrary);
-DECLARE_PTRS(ShaderProgram);
-DECLARE_PTRS(UniformBlockResource);
+
+template<typename T>
+class UniformBlockData;
+struct CameraUniformBlock;
+struct LightsUniformBlock;
 
 class RenderEngine
 {
@@ -26,11 +30,17 @@ public:
 
 	void setMainCamera(CameraSPtr camera);
 
+	void setRenderTarget(IRenderTargetSPtr target);
+
 	void setupGizmos(const std::string& programName);
+
+	void update(double deltaTime);
 
 	void render();
 	
 protected:
+
+	void setupPostProcessing();
 
 	GraphicsAPISPtr m_api;
 
@@ -42,11 +52,16 @@ protected:
 
 	CameraSPtr m_mainCamera;
 
-	GeometrySPtr m_gizmoGeometry;
-	MaterialSPtr m_gizmoMaterial;
+	IRenderTargetSPtr m_outputTarget;
 
-	UniformBlockResourceUPtr m_cameraUniformData;
-	UniformBlockResourceUPtr m_lightsUniformData;
+	RenderTargetSPtr m_gBuffer;
+
+	IDrawableSPtr m_gizmos;
+
+	IGeometrySPtr m_fullscreenTriangle;
+
+	std::shared_ptr<UniformBlockData<CameraUniformBlock>> m_cameraUniformBlock;
+	std::shared_ptr<UniformBlockData<LightsUniformBlock>> m_lightsUniformBlock;
 
 	bool m_showGizmos = true;
 
@@ -54,7 +69,7 @@ protected:
 
 	void rebuildCommandList();
 
-	void updateCameraUniformData(const Camera& camera);
+	void updateCameraUniformData(CameraSPtr camera);
 	void updateLightsUniformData();
 };
 

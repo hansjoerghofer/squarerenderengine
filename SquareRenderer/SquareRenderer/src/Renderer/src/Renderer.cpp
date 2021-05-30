@@ -1,9 +1,10 @@
 #include "API/GraphicsAPI.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/Camera.h"
-#include "Scene/Geometry.h"
+#include "Renderer/IRenderTarget.h"
+#include "Renderer/IGeometry.h"
 #include "Material/Material.h"
 #include "Material/ShaderProgram.h"
+#include "Texture/ITexture.h"
 
 inline GLenum translate(BlendFactor factor)
 {
@@ -72,45 +73,49 @@ Renderer::Renderer()
     applyState(RendererState(), true);
 }
 
-void Renderer::render(Geometry& geo, Material& mat)
+void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
 {
-    mat.bind();
-    geo.bind();
+    mat->bind();
+    bindTextures(*mat);
+    geo->bind();
 
     GLenum primitiveMode = translate(m_currentState.primitive);
-    if (geo.indexCount() > 0)
+    if (geo->indexCount() > 0)
     {
-        const GLsizei indexCount = static_cast<GLsizei>(geo.indexCount());
+        const GLsizei indexCount = static_cast<GLsizei>(geo->indexCount());
         glDrawElements(primitiveMode, indexCount, GL_UNSIGNED_INT, 0);
     }
     else
     {
-        const GLsizei vertexCount = static_cast<GLsizei>(geo.vertexCount());
+        const GLsizei vertexCount = static_cast<GLsizei>(geo->vertexCount());
         glDrawArrays(primitiveMode, 0, vertexCount);
     }
 
-    geo.unbind();
-    mat.unbind();
+    geo->unbind();
+    unbindTextures();
+    mat->unbind();
 
     GraphicsAPICheckError();
 }
 
-void Renderer::setupView(const Camera& cam)
+void Renderer::setTarget(IRenderTargetSPtr target)
 {
-    const glm::vec4 viewport = cam.viewport();
-    const int width = cam.width();
-    const int height = cam.height();
+    if (target && target != m_currentRenderTarget)
+    {
+        glViewport(
+            0,0,
+            target->width(),
+            target->height()
+        );
 
-    glViewport(
-        static_cast<GLsizei>(viewport.x * width),
-        static_cast<GLsizei>(viewport.y * height),
-        static_cast<GLsizei>(viewport.z * width),
-        static_cast<GLsizei>(viewport.w * height)
-    );
+        GLuint fbo = target->handle();
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        GraphicsAPICheckError();
 
-    GraphicsAPICheckError();
+        m_currentRenderTarget = target;
+    }
 }
 
 void Renderer::applyState(const RendererState& state, bool force)
@@ -228,4 +233,35 @@ void Renderer::applyState(const RendererState& state, bool force)
     m_currentState = state;
 
     GraphicsAPICheckError();
+}
+
+void Renderer::bindTextures(const Material& mat)
+{
+    auto textures = mat.uniformTextures();
+    textures.insert(
+        mat.program()->defaultTextures().begin(),
+        mat.program()->defaultTextures().end());
+
+    m_boundTextures.reserve(textures.size());
+
+    GLenum activeTexture = GL_TEXTURE0;
+    for (const auto& [name, texture] : textures)
+    {
+        glActiveTexture(activeTexture++);
+        texture->bind();
+
+        m_boundTextures.push_back(texture);
+    }
+}
+
+void Renderer::unbindTextures()
+{
+    GLenum activeTexture = GL_TEXTURE0;
+    for (auto texture : m_boundTextures)
+    {
+        glActiveTexture(activeTexture++);
+        texture->unbind();
+    }
+
+    m_boundTextures.clear();
 }

@@ -2,6 +2,8 @@
 
 #include "Common/Macros.h"
 #include "Common/Logger.h"
+#include "Renderer/IRenderTarget.h"
+#include "API/SharedResource.h"
 
 #include <string>
 
@@ -11,8 +13,9 @@ class InputHandler;
 DECLARE_PTRS(LogWidget);
 DECLARE_PTRS(GLWindow);
 DECLARE_PTRS(InputHandler);
+DECLARE_PTRS(IWidget);
 
-class GLWindow
+class GLWindow : public IRenderTarget
 {
 public:
 	GLWindow(int width, int height, const std::string& title);
@@ -21,16 +24,21 @@ public:
 	void close();
 	bool isOpen() const;
 
+	void update(double deltaTime);
+
 	void renderGUI();
 	void swapBuffers();
 
-	int width() const;
-	int height() const;
+	virtual int width() const override;
+	virtual int height() const override;
+	virtual SharedResource::Handle handle() const override;
+
 	float dpiScaling() const;
 
 	bool enableGUI();
+	void addWidget(IWidgetSPtr widget);
 
-	const InputHandler& inputHandler() const;
+	InputHandlerSPtr inputHandler() const;
 
 protected:
 
@@ -43,8 +51,9 @@ protected:
 	bool m_guiInitialized = false;
 	bool m_showUiDemo = true;
 
-	LogWidgetSPtr m_logUiWidget;
+	std::list<IWidgetSPtr> m_widgets;
 	LogCallbackSPtr m_logCallback;
+
 	InputHandlerSPtr m_inputHandler;
 
 	GLFWwindow* m_handle = nullptr;
@@ -55,6 +64,8 @@ protected:
 	virtual void onResize(int width, int height);
 
 private:
+	friend InputHandler;
+
 	void cleanupGUI();
 
 	void handleResize(int width, int height);

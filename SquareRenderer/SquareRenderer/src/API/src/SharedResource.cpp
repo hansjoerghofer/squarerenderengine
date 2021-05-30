@@ -4,7 +4,7 @@ SharedResource::~SharedResource()
 {
 }
 
-SharedResourceHandle SharedResource::handle() const
+SharedResource::Handle SharedResource::handle() const
 {
 	return m_handle;
 }

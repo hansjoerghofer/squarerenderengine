@@ -2,6 +2,8 @@
 
 #include "Common/Macros.h"
 #include "Renderer/RendererState.h"
+#include "Renderer/IDrawable.h"
+#include "Renderer/IRenderTarget.h"
 
 #include <string>
 #include <vector>
@@ -9,16 +11,7 @@
 DECLARE_PTRS(Camera);
 DECLARE_PTRS(Material);
 DECLARE_PTRS(Geometry);
-DECLARE_PTRS(SceneElement);
-
-struct RenderElement
-{
-    GeometrySPtr geometry;
-    MaterialSPtr material;
-
-    RenderElement(GeometrySPtr geo, MaterialSPtr mat)
-        : geometry(geo), material(mat) {}
-};
+DECLARE_PTRS(RenderTarget);
 
 struct RenderCommand
 {
@@ -28,9 +21,9 @@ struct RenderCommand
 
 	RendererState state;
 
-    CameraSPtr camera = nullptr;
+    std::vector<IDrawableSPtr> drawables;
 
-    std::vector<RenderElement> elements;
+    IRenderTargetSPtr target = nullptr;
 
     MaterialSPtr overrideMaterial = nullptr;
 };

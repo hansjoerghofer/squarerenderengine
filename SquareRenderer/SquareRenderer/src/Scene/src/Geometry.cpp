@@ -1,6 +1,6 @@
 #include "Scene/Geometry.h"
 
-void Geometry::link(GeometryResourceUPtr resource)
+void Geometry::link(IGeometryResourceUPtr resource)
 {
 	m_linkedResource = std::move(resource);
 }

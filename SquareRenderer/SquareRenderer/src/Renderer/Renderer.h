@@ -5,11 +5,15 @@
 #include "Application/GL.h"
 #include "Renderer/RendererState.h"
 
+#include <vector>
+
 DECLARE_PTRS(Camera);
-DECLARE_PTRS(Geometry);
+DECLARE_PTRS(IGeometry);
 DECLARE_PTRS(Material);
 DECLARE_PTRS(ShaderProgram);
 DECLARE_PTRS(Renderer);
+DECLARE_PTRS(ITexture);
+DECLARE_PTRS(IRenderTarget);
 
 class Renderer
 {
@@ -17,13 +21,21 @@ public:
 
 	Renderer();
 
-	void render(Geometry& geo, Material& mat);
+	void render(IGeometrySPtr geo, MaterialSPtr mat);
 
-	void setupView(const Camera& cam);
+	void setTarget(IRenderTargetSPtr target);
 
 	void applyState(const RendererState& state, bool force = false);
 
 private:
+
+	void bindTextures(const Material& mat);
+
+	void unbindTextures();
+
+	IRenderTargetSPtr m_currentRenderTarget;
+
+	std::vector<ITextureSPtr> m_boundTextures;
 
 	RendererState m_currentState;
 };

@@ -4,7 +4,10 @@
 #include "API/GraphicsAPI.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
+#include "Scene/Geometry.h"
 #include "Material/MaterialLibrary.h"
+
+#include <filesystem>
 
 SceneImporter::SceneImporter(GraphicsAPISPtr api, MaterialLibrarySPtr matLib)
 	: m_api(api)
@@ -18,25 +21,25 @@ SceneImporter::~SceneImporter()
 
 SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 {
+	const std::filesystem::path path(filepath);
+
+	if (!std::filesystem::exists(path) || !path.has_filename())
+	{
+		throw std::runtime_error("Invalid path to scene file.");
+	}
+
 	SceneLoader loader(m_matLib);
 	loader.setDefaultProgramName("Lit.BlinnPhong");
 	SceneUPtr scene = loader.loadFromFile(filepath);
-
-	/*for (SceneElementSPtr element : scene->sceneElements())
-	{
-		if (!element->geometry()) continue;
-
-		if (!m_api->allocate(*element->geometry()))
-		{
-			Logger::Warning("Could not allocate geometry buffers.");
-		}
-	}*/
 
 	auto t = scene->traverser();
 	while (t.hasNext())
 	{
 		SceneNodeSPtr node = t.next();
-		if (node->geometry() && !m_api->allocate(*node->geometry()))
+		GeometrySPtr geo = node->geometry() ? 
+			std::dynamic_pointer_cast<Geometry>(node->geometry()) : nullptr;
+
+		if (geo && !m_api->allocate(geo))
 		{
 			Logger::Warning("Could not allocate geometry buffers.");
 		}

@@ -9,6 +9,11 @@ void MaterialLibrary::registerProgram(ShaderProgramSPtr program)
 	m_registeredPrograms[program->name()] = program;
 }
 
+void MaterialLibrary::registerDefaultTexture(const std::string& key, ITextureSPtr texture)
+{
+	m_defaultTextures[key] = texture;
+}
+
 ShaderProgramSPtr MaterialLibrary::findProgram(const std::string& name) const
 {
 	auto found = m_registeredPrograms.find(name);
@@ -61,6 +66,11 @@ MaterialSPtr MaterialLibrary::instanciate(const std::string& programName, const 
 	}
 
 	return nullptr;
+}
+
+const std::unordered_map<std::string, MaterialSPtr>& MaterialLibrary::materials() const
+{
+	return m_namedInstances;
 }
 
 MaterialLibraryUPtr MaterialLibrary::create()

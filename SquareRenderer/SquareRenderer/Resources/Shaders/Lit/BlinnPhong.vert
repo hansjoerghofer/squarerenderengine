@@ -7,8 +7,8 @@ layout (location = 1) in vec2 vUV;
 layout (location = 2) in vec3 vNormal;
 layout (location = 3) in vec3 vTangent;
 
-uniform mat4 M;
-uniform mat4 N;
+uniform mat4 modelToWorld = mat4(1);
+uniform mat4 normalToWorld = mat4(1);
 
 out VSData
 {
@@ -19,10 +19,10 @@ out VSData
 
 void main() 
 {
-    vec4 fragPosWS = M * vec4(vPosition, 1.0);
+    vec4 fragPosWS = modelToWorld * vec4(vPosition, 1.0);
 
     vs_out.uv = vUV;
-    vs_out.normalWS = normalize(N * vec4(vNormal, 0)).xyz;
+    vs_out.normalWS = normalize(normalToWorld * vec4(vNormal, 0)).xyz;
     vs_out.fragPosWS = fragPosWS.xyz;
 
     gl_Position = _VP * fragPosWS;

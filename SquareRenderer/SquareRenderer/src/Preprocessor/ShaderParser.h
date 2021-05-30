@@ -9,6 +9,7 @@
 #include <stack>
 
 DECLARE_PTRS(ShaderSource);
+struct UniformMetaInfo;
 
 class ShaderParser
 {
@@ -24,6 +25,8 @@ protected:
 
 	bool handleDefine(const std::string& line, std::stringstream& out);
 
+	bool handleUniform(const std::string& line, std::stringstream& out);
+
 	std::filesystem::path resolveCurrentPath(const std::filesystem::path& path) const;
 
 	bool m_addMetaComments = true;
@@ -33,5 +36,7 @@ protected:
 	std::unordered_map<std::string, std::string> m_fileCache;
 
 	std::unordered_map<std::string, ShaderSourceSPtr> m_shaderCache;
+
+	std::vector<UniformMetaInfo> m_tempUniformCache;
 };
 

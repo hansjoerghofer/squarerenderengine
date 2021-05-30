@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Renderer/IDrawable.h"
 
 #include <glm/glm.hpp>
 
@@ -8,10 +9,9 @@
 #include <list>
 
 DECLARE_PTRS(SceneNode);
-DECLARE_PTRS(Material);
 DECLARE_PTRS(Geometry);
 
-class SceneNode
+class SceneNode : public IDrawable
 {
 public:
 
@@ -27,6 +27,8 @@ public:
 
 	const std::list<SceneNodeSPtr>& children() const;
 
+	unsigned int count() const;
+
 	void setLocalTransform(const glm::mat4& transform);
 
 	const glm::mat4& localTransform() const;
@@ -35,13 +37,15 @@ public:
 
 	void setMaterial(MaterialSPtr material);
 
-	MaterialSPtr material() const;
+	virtual MaterialSPtr material() const override;
 
 	void setGeometry(GeometrySPtr geometry);
 
-	GeometrySPtr geometry() const;
+	virtual IGeometrySPtr geometry() const override;
 
-	bool isDrawable() const;
+	virtual void preRender(MaterialSPtr material) override;
+
+	virtual void postRender() override;
 
 private:
 	std::string m_name;
@@ -56,4 +60,3 @@ private:
 
 	std::list<SceneNodeSPtr> m_children;
 };
-

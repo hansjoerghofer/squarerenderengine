@@ -11,6 +11,11 @@ SceneNodeSPtr Scene::root() const
 	return m_root;
 }
 
+unsigned int Scene::nodeNum() const
+{
+	return m_root->count();
+}
+
 Scene::Traverser Scene::traverser() const
 {
 	return Traverser(m_root);
@@ -19,9 +24,9 @@ Scene::Traverser Scene::traverser() const
 Scene::Traverser::Traverser(SceneNodeSPtr node)
 	: m_node(node)
 {
-	for (const SceneNodeSPtr& node : m_node->children())
+	for (const SceneNodeSPtr& n : m_node->children())
 	{
-		m_stack.push(node);
+		m_stack.push(n);
 	}
 }
 

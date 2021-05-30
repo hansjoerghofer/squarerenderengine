@@ -1,14 +1,15 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Material/ShaderProgram.h"
 
 #include <glm/glm.hpp>
 
 #include <unordered_map>
+#include <vector>
 
-struct UniformValue;
-DECLARE_PTRS(ShaderProgram);
 DECLARE_PTRS(Material);
+DECLARE_PTRS(ITexture);
 
 class Material
 {
@@ -28,6 +29,11 @@ public:
 	bool isBound() const;
 
 	bool setUniform(const std::string& name, UniformValue&& value);
+	bool setUniform(const std::string& name, ITextureSPtr value);
+
+	UniformValue uniformValue(const std::string& name) const;
+
+	const std::unordered_map<std::string, ITextureSPtr>& uniformTextures() const;
 	
 private:
 
@@ -38,6 +44,8 @@ private:
 	ShaderProgramSPtr m_program;
 
 	std::unordered_map<std::string, UniformValue> m_uniformStorage;
+
+	std::unordered_map<std::string, ITextureSPtr> m_textureStorage;
 
 	void setUniforms();
 };

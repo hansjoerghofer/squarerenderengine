@@ -17,6 +17,8 @@ public:
 
 	SceneNodeSPtr root() const;
 
+    unsigned int nodeNum() const;
+
     Traverser traverser() const;
 
     class Traverser

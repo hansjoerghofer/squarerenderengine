@@ -4,10 +4,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_glfw.h"
-#include "ImGui/imgui_impl_opengl3.h"
-#include "ImGui/LogWidget.h"
+#include "GUI/imgui.h"
+#include "GUI/imgui_impl_glfw.h"
+#include "GUI/imgui_impl_opengl3.h"
+#include "GUI/IWidget.h"
+#include "GUI/LogWidget.h"
 
 #include <stdexcept>
 
@@ -121,6 +122,16 @@ bool GLWindow::isOpen() const
     return m_handle && !glfwWindowShouldClose(m_handle);
 }
 
+void GLWindow::update(double deltaTime)
+{
+    m_inputHandler->update(deltaTime);
+
+    for (IWidgetSPtr widget : m_widgets)
+    {
+        widget->update(deltaTime);
+    }
+}
+
 int GLWindow::width() const
 {
     return m_width;
@@ -129,6 +140,11 @@ int GLWindow::width() const
 int GLWindow::height() const
 {
     return m_height;
+}
+
+SharedResource::Handle GLWindow::handle() const
+{
+    return SharedResource::Handle(0);
 }
 
 float GLWindow::dpiScaling() const
@@ -159,22 +175,29 @@ bool GLWindow::enableGUI()
         return false;
     }
 
-    m_logUiWidget = std::make_shared<LogWidget>();
+    std::shared_ptr<LogWidget> logWidget = std::make_shared<LogWidget>("Log");
 
     m_logCallback = Logger::getInstance().registerCallback(
         [=](LogSeverity s, const std::string& message)
         {
-            m_logUiWidget->AddLog("[%s] %s\n", Logger::severity(s).c_str(), message.c_str());
+            logWidget->AddLog("[%s] %s\n", Logger::severity(s).c_str(), message.c_str());
         }
     );
+
+    m_widgets.push_back(logWidget);
 
     m_guiInitialized = true;
     return m_guiInitialized;
 }
 
-const InputHandler& GLWindow::inputHandler() const
+void GLWindow::addWidget(IWidgetSPtr widget)
 {
-    return *m_inputHandler;
+    m_widgets.push_back(widget);
+}
+
+InputHandlerSPtr GLWindow::inputHandler() const
+{
+    return m_inputHandler;
 }
 
 void GLWindow::onResize(int /*width*/, int /*height*/)
@@ -183,10 +206,17 @@ void GLWindow::onResize(int /*width*/, int /*height*/)
 
 void GLWindow::onGUI()
 {
-    //ImGui::ShowDemoWindow(&m_showUiDemo);
+    ImGuiIO& io = ImGui::GetIO();
+    m_inputHandler->guiHasMouseFocus(io.WantCaptureMouse);
+
+    ImGui::ShowDemoWindow(&m_showUiDemo);
 
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
-    m_logUiWidget->Draw("Log", &m_showUiDemo);
+    
+    for (IWidgetSPtr widget : m_widgets)
+    {
+        widget->draw();
+    }
 }
 
 void GLWindow::handleResize(int width, int height)

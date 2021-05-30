@@ -33,6 +33,16 @@ const std::list<SceneNodeSPtr>& SceneNode::children() const
     return m_children;
 }
 
+unsigned int SceneNode::count() const
+{
+    unsigned int count = 1;
+    for (SceneNodeSPtr child : m_children)
+    {
+        count += child->count();
+    }
+    return count;
+}
+
 void SceneNode::setLocalTransform(const glm::mat4& transform)
 {
     m_transform = transform;
@@ -45,9 +55,10 @@ const glm::mat4& SceneNode::localTransform() const
 
 glm::mat4 SceneNode::worldTransform() const
 {
+    // TODO cache result!
     if (!m_parent.expired())
     {
-        return m_parent.lock()->worldTransform() * m_transform;
+        return m_parent.lock()->worldTransform() * localTransform();
     }
     else
     {
@@ -70,12 +81,20 @@ void SceneNode::setGeometry(GeometrySPtr geometry)
     m_geometry = geometry;
 }
 
-GeometrySPtr SceneNode::geometry() const
+IGeometrySPtr SceneNode::geometry() const
 {
     return m_geometry;
 }
 
-bool SceneNode::isDrawable() const
+void SceneNode::preRender(MaterialSPtr material)
 {
-    return m_geometry && m_material;
+    glm::mat4 modelToWorld = worldTransform();
+
+    material->setUniform("modelToWorld", modelToWorld);
+    material->setUniform("normalToWorld", glm::transpose(glm::inverse(modelToWorld)));
+}
+
+void SceneNode::postRender()
+{
+
 }

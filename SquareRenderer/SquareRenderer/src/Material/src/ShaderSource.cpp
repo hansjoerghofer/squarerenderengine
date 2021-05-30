@@ -1,15 +1,11 @@
 #include "Material/ShaderSource.h"
 #include "API/SharedResource.h"
 
-ShaderSource::ShaderSource(ShaderType type, const std::string& source)
+ShaderSource::ShaderSource(ShaderType type, const std::string& source,
+	const std::vector<UniformMetaInfo>& uniformMetaInfo)
 	: m_type(type)
 	, m_source(source)
-{
-}
-
-ShaderSource::ShaderSource(ShaderType type, std::string&& source)
-	: m_type(type)
-	, m_source(source)
+	, m_uniformMetaInfo(uniformMetaInfo)
 {
 }
 
@@ -17,7 +13,7 @@ ShaderSource::~ShaderSource()
 {
 }
 
-void ShaderSource::link(SharedResourceUPtr resource)
+void ShaderSource::link(IShaderResourceUPtr resource)
 {
 	m_linkedResource = std::move(resource);
 }
@@ -35,6 +31,11 @@ int ShaderSource::id() const
 ShaderType ShaderSource::type() const
 {
 	return m_type;
+}
+
+const std::vector<UniformMetaInfo>& ShaderSource::uniformMetaInfo() const
+{
+	return m_uniformMetaInfo;
 }
 
 const std::string& ShaderSource::source() const

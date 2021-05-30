@@ -1,5 +1,5 @@
 #include "Material/Material.h"
-#include "Material/ShaderProgram.h"
+#include "Texture/ITexture.h"
 
 Material::Material(const std::string& name, ShaderProgramSPtr program)
 	: m_name(name)
@@ -62,6 +62,35 @@ bool Material::setUniform(const std::string& name, UniformValue&& value)
 		return true;
 	}
 }
+
+bool Material::setUniform(const std::string& name, ITextureSPtr value)
+{
+	const int activeTextureSlot = static_cast<int>(m_uniformStorage.size());
+	if (setUniform(name, activeTextureSlot))
+	{
+		m_textureStorage[name] = value;
+		return true;
+	}
+	return false;
+}
+
+UniformValue Material::uniformValue(const std::string& name) const
+{
+	const auto& found = m_uniformStorage.find(name);
+	if (found != m_uniformStorage.end())
+	{
+		return found->second;
+	}
+
+	return UniformValue();
+}
+
+const std::unordered_map<std::string, ITextureSPtr>& Material::uniformTextures() const
+{
+	return m_textureStorage;
+}
+
+
 
 void Material::setUniforms()
 {

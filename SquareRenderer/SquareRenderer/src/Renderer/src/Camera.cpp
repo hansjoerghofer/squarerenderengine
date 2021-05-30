@@ -7,7 +7,6 @@ Camera::Camera(int width, int height, float near, float far)
 	, m_height(height)
 	, m_near(near)
 	, m_far(far)
-	, m_viewport(0,0,1,1)
 	, m_view(1.f)
 	, m_projection(1.f)
 	, m_position(0,0,0)
@@ -17,11 +16,6 @@ Camera::Camera(int width, int height, float near, float far)
 
 Camera::~Camera()
 {
-}
-
-const glm::vec4& Camera::viewport() const
-{
-	return m_viewport;
 }
 
 int Camera::width() const

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Renderer/IRenderTarget.h"
 
 #include "glm/glm.hpp"
 
@@ -13,8 +14,6 @@ public:
 	Camera(int width, int height, float near, float far);
 
 	virtual ~Camera() = 0;
-
-	virtual const glm::vec4& viewport() const;
 
 	virtual int width() const;
 
@@ -40,8 +39,6 @@ public:
 		glm::vec3 up = glm::vec3(0, 1, 0));
 
 protected:
-
-	glm::vec4 m_viewport;
 
 	int m_width;
 	int m_height;

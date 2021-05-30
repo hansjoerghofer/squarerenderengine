@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "API/SharedResource.h"
+#include "Material/Uniform.h"
 
 #include <string>
-
-DECLARE_PTRS(SharedResource);
-DECLARE_PTRS(ShaderSource);
+#include <unordered_map>
 
 enum class ShaderType : int
 {
@@ -19,16 +19,18 @@ class ShaderSource
 {
 public:
 
-	ShaderSource(ShaderType type, const std::string& source);
-	ShaderSource(ShaderType type, std::string&& source);
+	ShaderSource(ShaderType type, const std::string& source, 
+		const std::vector<UniformMetaInfo >& uniformMetaInfo);
 
 	virtual ~ShaderSource();
 
-	void link(SharedResourceUPtr resource);
+	void link(IShaderResourceUPtr resource);
 
 	int id() const;
 
 	ShaderType type() const;
+
+	const std::vector<UniformMetaInfo>& uniformMetaInfo() const;
 
 	const std::string& source() const;
 
@@ -38,8 +40,10 @@ protected:
 
 	std::string m_source;
 
-	SharedResourceUPtr m_linkedResource;
+	IShaderResourceUPtr m_linkedResource;
 
 	std::string m_compileLog;
+
+	std::vector<UniformMetaInfo> m_uniformMetaInfo;
 };
 

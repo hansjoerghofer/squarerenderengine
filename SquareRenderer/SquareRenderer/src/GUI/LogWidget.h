@@ -1,33 +1,40 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "GUI/IWidget.h"
+#include "GUI/imgui.h"
 
-#include "ImGui/imgui.h"
+#include <string>
 
 DECLARE_PTRS(LogWidget)
 
-class LogWidget
+class LogWidget : public IWidget
 {
     ImGuiTextBuffer     Buf;
     ImGuiTextFilter     Filter;
     ImVector<int>       LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
     bool                AutoScroll;  // Keep scrolling if already at the bottom.
 
+    std::string m_title;
+    bool m_visible;
+
 public:
-    LogWidget()
+    LogWidget(const std::string& title)
+        : m_title(title)
+        , m_visible(true)
     {
         AutoScroll = true;
         Clear();
     }
 
-    void    Clear()
+    void Clear()
     {
         Buf.clear();
         LineOffsets.clear();
         LineOffsets.push_back(0);
     }
 
-    void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
+    void AddLog(const char* fmt, ...) IM_FMTARGS(2)
     {
         int old_size = Buf.size();
         va_list args;
@@ -39,9 +46,12 @@ public:
                 LineOffsets.push_back(old_size + 1);
     }
 
-    void    Draw(const char* title, bool* p_open = NULL)
+    virtual void update(double /*deltaTime*/) override
+    {}
+
+    virtual void draw() override
     {
-        if (!ImGui::Begin(title, p_open))
+        if (!ImGui::Begin(m_title.c_str(), &m_visible))
         {
             ImGui::End();
             return;
@@ -114,7 +124,6 @@ public:
                     const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
 
                     ImVec4 color = ImVec4(.7f, .7f, .7f, 1.f);
-                    bool has_color = false;
                     if (strncmp(line_start, "[Info]", 6) == 0)
                     {
                         color = ImVec4(.4f, .4f, 1.f, 1.f);

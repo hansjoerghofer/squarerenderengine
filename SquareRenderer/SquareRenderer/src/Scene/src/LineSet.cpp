@@ -1,7 +1,8 @@
 #include "Scene/LineSet.h"
 
-LineSet::LineSet(const std::vector<glm::vec3>& points, const std::vector<glm::vec3>& colors)
-	: m_vertices(pointsToVertices(points, colors))
+LineSet::LineSet(const std::vector<LineSegment>& lines)
+	: m_vertices(linesToVertices(lines))
+	, m_indices()
 {
 }
 
@@ -41,7 +42,7 @@ const std::vector<Vertex>& LineSet::vertices() const
 
 const std::vector<uint32_t>& LineSet::indices() const
 {
-	return std::vector<uint32_t>();
+	return m_indices;
 }
 
 bool LineSet::hasUVs() const
@@ -59,19 +60,15 @@ bool LineSet::hasTangents() const
 	return false;
 }
 
-std::vector<Vertex> LineSet::pointsToVertices(const std::vector<glm::vec3>& points, const std::vector<glm::vec3>& colors)
+std::vector<Vertex> LineSet::linesToVertices(const std::vector<LineSegment>& lines)
 {
-	if (points.size() != colors.size() * 2)
-	{
-		return std::vector<Vertex>();
-	}
+	std::vector<Vertex> vertices;
+	vertices.reserve(lines.size() * 2);
 
-	std::vector<Vertex> vertices(points.size());
-
-	for (int i = 0; i < points.size(); ++i)
+	for (const LineSegment& line : lines)
 	{
-		vertices[i].position = points[i];
-		vertices[i].normal = colors[i / 2];
+		vertices.push_back({ line.start, {0,0}, line.color, {0,0,0} });
+		vertices.push_back({ line.end, {0,0}, line.color, {0,0,0} });
 	}
 
 	return vertices;

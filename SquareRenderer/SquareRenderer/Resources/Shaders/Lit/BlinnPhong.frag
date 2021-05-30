@@ -10,14 +10,15 @@ in VSData
     vec3 fragPosWS;
 } vs_in;
 
+uniform sampler2D albedo;
 uniform vec4 albedoColor = vec4(1,1,1,1);
 uniform float shininessFactor = 0.5;
 
 void main() 
 {
-    float shininess = 128.0 * shininessFactor + 1;
+    float shininess = (256.0 * shininessFactor) + 1;
 
-    vec3 viewDirWS = normalize(_invV[3].xyz - vs_in.fragPosWS);
+    vec3 viewDirWS = normalize(_cameraPosition() - vs_in.fragPosWS);
 
     vec3 shadedColor = _ambientColor.rgb;
     for(int i = 0; i < _numLights; ++i)
@@ -42,5 +43,7 @@ void main()
         shadedColor += (diff * _lightsColor[i].rgb) + (spec * _lightsColor[i].rgb);
     }
 
-    gl_FragColor = vec4(shadedColor * albedoColor.rgb, 1);
+    vec3 unlitColor = albedoColor.rgb * texture(albedo, vs_in.uv).rgb;
+
+    gl_FragColor = vec4(shadedColor * unlitColor, 1);
 }

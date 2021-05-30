@@ -6,6 +6,8 @@
 #include "Material/MaterialLibrary.h"
 
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -72,8 +74,8 @@ MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
     for (unsigned int i = 0; i < mesh.mNumVertices; ++i)
     {
         // TODO use emplace
-        Vertex vertex = {};
-
+        Vertex vertex = Vertex();
+        
         Map(mesh.mVertices[i], vertex.position);
         Map(mesh.mNormals[i], vertex.normal);
         Map(mesh.mTangents[i], vertex.tangent);
@@ -165,23 +167,23 @@ void SceneLoader::setDefaultProgramName(const std::string& defaultProgramName)
 SceneUPtr SceneLoader::loadFromFile(const std::string& filepath)
 {
     Assimp::Importer importer;
-    /*importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, 0
+    importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, 0
         | aiComponent_TEXTURES
         | aiComponent_COLORS
         | aiComponent_TANGENTS_AND_BITANGENTS
         | aiComponent_BONEWEIGHTS
         | aiComponent_ANIMATIONS
         | aiComponent_CAMERAS 
-        | aiComponent_LIGHTS);*/
+        | aiComponent_LIGHTS);
 
-    const aiScene* aiScene = importer.ReadFile(filepath, 0
+    const aiScene* aiScene = importer.ReadFile(filepath, 0u
         | aiProcess_CalcTangentSpace
         | aiProcess_JoinIdenticalVertices
         | aiProcess_GenSmoothNormals
         | aiProcess_GenBoundingBoxes
         | aiProcess_PreTransformVertices        //! Flatten hierachy
         | aiProcess_SortByPType                 //! Split up heterogeneous mesh types
-        //| aiProcess_RemoveComponent
+        | aiProcess_RemoveComponent
         //| aiProcess_RemoveRedundantMaterials
         | aiProcess_Triangulate
         //| aiProcess_ImproveCacheLocality

@@ -2,6 +2,7 @@
 
 #include "Common/Macros.h"
 #include "API/SharedResource.h"
+#include "Renderer/IGeometry.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -15,20 +16,19 @@ struct Vertex
     glm::vec3 tangent;
 };
 
-DECLARE_PTRS(GeometryResource);
 DECLARE_PTRS(Geometry);
 
-class Geometry
+class Geometry : public IGeometry
 {
 public:
 
     virtual ~Geometry() {};
 
-    virtual void link(GeometryResourceUPtr resource);
+    virtual void link(IGeometryResourceUPtr resource);
 
-    virtual void bind();
+    virtual void bind() override;
 
-    virtual void unbind();
+    virtual void unbind() override;
 
     virtual bool linked() const;
 
@@ -36,11 +36,7 @@ public:
 
     virtual bool isStatic() const = 0;
 
-    virtual size_t vertexCount() const = 0;
-
     virtual size_t vertexBufferSize() const = 0;
-
-    virtual size_t indexCount() const = 0;
 
     virtual size_t indexBufferSize() const = 0;
 
@@ -56,17 +52,7 @@ public:
 
 protected:
 
-    GeometryResourceUPtr m_linkedResource;
+    IGeometryResourceUPtr m_linkedResource;
 
     bool m_isBound = false;
-};
-
-class GeometryResource : public SharedResource
-{
-public:
-    virtual ~GeometryResource() {};
-
-    virtual void bind() = 0;
-
-    virtual void unbind() = 0;
 };

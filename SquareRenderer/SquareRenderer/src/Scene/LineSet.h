@@ -9,12 +9,18 @@
 
 DECLARE_PTRS(LineSet);
 
+struct LineSegment
+{
+    glm::vec3 start;
+    glm::vec3 end;
+    glm::vec3 color;
+};
+
 class LineSet : public Geometry
 {
 public:
 
-    LineSet(const std::vector<glm::vec3>& points,
-        const std::vector<glm::vec3>& colors);
+    LineSet(const std::vector<LineSegment>& lines);
 
     virtual ~LineSet() override;
 
@@ -40,9 +46,9 @@ public:
 
 protected:
 
-    static std::vector<Vertex> pointsToVertices(
-        const std::vector<glm::vec3>& points,
-        const std::vector<glm::vec3>& colors);
+    static std::vector<Vertex> linesToVertices(const std::vector<LineSegment>& lineSegments);
 
     std::vector<Vertex> m_vertices;
+
+    std::vector<uint32_t> m_indices;
 };

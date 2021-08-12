@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Common/Math3D.h"
 #include "Material/ShaderProgram.h"
-
-#include <glm/glm.hpp>
 
 #include <unordered_map>
 #include <vector>
@@ -28,6 +27,7 @@ public:
 
 	bool isBound() const;
 
+	bool setUniform(const std::string& name, const UniformValue& value);
 	bool setUniform(const std::string& name, UniformValue&& value);
 	bool setUniform(const std::string& name, ITextureSPtr value);
 

@@ -1,11 +1,14 @@
 #include "Common/Logger.h"
 #include "Common/Timer.h"
+#include "Common/Math3D.h"
 
 #include "API/GraphicsAPI.h"
 
 #include "Application/GLWindow.h"
 #include "Application/InputHandler.h"
+
 #include "GUI/MaterialLibraryWidget.h"
+#include "GUI/StatisticsWidget.h"
 
 #include "Preprocessor/SceneImporter.h"
 #include "Preprocessor/MaterialImporter.h"
@@ -19,14 +22,13 @@
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
 #include "Scene/CubeGeometry.h"
+#include "Scene/DirectionalLight.h"
+#include "Scene/PointLight.h"
 
 #include "Texture/Texture2D.h"
 
 #include "Renderer/RenderEngine.h"
 #include "Renderer/PerspectiveCamera.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtx/transform.hpp>
 
 #include <iostream>
 
@@ -65,8 +67,15 @@ int main()
     {
         ScopedTimerLog t("Scene import");
         SceneImporter si(api, matLib);
-        scene = si.importFromFile("Resources/Scenes/primitives.fbx");
+        //scene = si.importFromFile("Resources/Scenes/primitives_smooth.fbx");
+        //scene = si.importFromFile("F:/SquaredEngine/Resources/Assets/Camera/Camera.FBX");
+        scene = si.importFromFile("Resources/Scenes/primitives_more.fbx");
     }
+
+    DirectionalLightSPtr directionalLight = std::make_shared<DirectionalLight>(glm::vec3(1, -1, -0.5), glm::vec3(0.2, 0.7, 0.1));
+    scene->addLight(directionalLight);
+    //PointLightSPtr pointLight = std::make_shared<PointLight>(glm::vec3(.5, .5, .25), glm::vec3(0.2, 0.2, 0.7));
+    //scene->addLight(pointLight);
 
     CameraSPtr camera = CameraSPtr(new PerspectiveCamera(
         mainWindow->width(), mainWindow->height(), 60, .1f, 10.f));
@@ -74,14 +83,20 @@ int main()
 
     mainWindow->inputHandler()->enableCameraNavigation(camera, 1000, 10);
 
-    mainWindow->addWidget(std::make_shared<MaterialLibraryWidget>("Materials", matLib));
+    RenderEngineSPtr renderEngine = std::make_shared<RenderEngine>(api, matLib);
+    
+    //renderEngine->setRenderingScale(1.0 / mainWindow->dpiScaling());
 
-    RenderEngineUPtr renderEngine = std::make_unique<RenderEngine>(api, matLib);
-    renderEngine->setupGizmos("Debug.Line");
     renderEngine->setScene(scene);
     renderEngine->setMainCamera(camera);
+    
+    renderEngine->setupGizmos("Debug.Line");
     renderEngine->setRenderTarget(mainWindow);
 
+    mainWindow->addWidget(std::make_shared<MaterialLibraryWidget>("Materials", matLib));
+    mainWindow->addWidget(std::make_shared<StatisticsWidget>("Stats", mainWindow, renderEngine));
+
+    // TESTSETUP remove
     auto matfind = matLib->materials().find("Ground");
     if (matfind != matLib->materials().end())
     {
@@ -93,15 +108,10 @@ int main()
     {
         const double deltaTime = frameTimer.elapsed();
         frameTimer.reset();
-
-        // ------------------ input stuff -----------------------------
-
-        mainWindow->update(deltaTime);
-        
+                
         // ------------------ update stuff -----------------------------
 
-        // TODO update somewhere else
-        camera->updateResolution(mainWindow->width(), mainWindow->height());
+        mainWindow->update(deltaTime);
 
         renderEngine->update(deltaTime);
 
@@ -109,7 +119,7 @@ int main()
 
         renderEngine->render();
 
-        mainWindow->renderGUI();
+        mainWindow->render();
 
         mainWindow->swapBuffers();
     }

@@ -1,10 +1,11 @@
+#include "Common/Math3D.h"
 #include "GUI/MaterialLibraryWidget.h"
 #include "GUI/imgui.h"
 #include "Material/MaterialLibrary.h"
 #include "Material/Material.h"
 #include "Material/ShaderProgram.h"
 
-#include <glm/gtc/type_ptr.hpp>
+#include <functional>
 
 inline bool numericClose(float a, float b)
 {
@@ -30,6 +31,122 @@ UniformValueCache<T> createFromUniform(const UniformValue& value, const UniformM
 	return uniformCache;
 }
 
+template<typename T>
+void insertUniformValue(UniformGroupCache<T>& uniformCache, const UniformValue& value, const UniformMetaInfo& metaInfo)
+{
+	UniformValue uniformValue = value;
+
+	if (uniformValue.type == UniformType::Invalid)
+	{
+		uniformValue = metaInfo.defaultValue;
+	}
+	else if (uniformValue.type != metaInfo.type)
+	{
+		// should not happen!
+		return;
+	}
+
+	switch (metaInfo.type)
+	{
+	case UniformType::Float:
+		uniformCache.floatUniforms.emplace_back(createFromUniform<float>(uniformValue, metaInfo));
+		uniformCache.floatUniforms.back().useRange = metaInfo.minValue.as<float>() >= -1000.f
+			&& metaInfo.maxValue.as<float>() <= 1000.f;
+		break;
+	case UniformType::Int:
+		uniformCache.intUniforms.emplace_back(createFromUniform<signed int>(uniformValue, metaInfo));
+		uniformCache.intUniforms.back().useRange = metaInfo.minValue.as<signed int>() >= -1000
+			&& metaInfo.maxValue.as<signed int>() <= 1000;
+		break;
+	case UniformType::Vec4:
+	{
+		const glm::vec4 min = metaInfo.minValue.as<glm::vec4>();
+		const glm::vec4 max = metaInfo.maxValue.as<glm::vec4>();
+
+		uniformCache.vec4Uniforms.emplace_back(createFromUniform<glm::vec4>(uniformValue, metaInfo));
+		uniformCache.vec4Uniforms.back().useRange = min.x >= -1000.f && min.y >= -1000.f && min.z >= -1000.f
+			&& max.x <= 1000.f && max.y <= 1000.f && max.z <= 1000.f;
+		break;
+	}
+	}
+}
+
+template<typename T>
+void updatUniformValue(UniformGroupCache<T>& uniformCache, std::function<bool(const std::string&, const UniformValue&)> updateFunc)
+{
+	for (auto& uniform : uniformCache.floatUniforms)
+	{
+		if (!numericClose(uniform.newValue, uniform.oldValue) &&
+			updateFunc(uniform.name, uniform.newValue))
+		{
+			uniform.oldValue = uniform.newValue;
+		}
+	}
+	for (auto& uniform : uniformCache.intUniforms)
+	{
+		if (uniform.newValue != uniform.oldValue &&
+			updateFunc(uniform.name, uniform.newValue))
+		{
+			uniform.oldValue = uniform.newValue;
+		}
+	}
+	for (auto& uniform : uniformCache.vec4Uniforms)
+	{
+		if (!numericClose(uniform.newValue, uniform.oldValue) &&
+			updateFunc(uniform.name, uniform.newValue))
+		{
+			uniform.oldValue = uniform.newValue;
+		}
+	}
+}
+
+template<typename T>
+void drawUniformGUI(UniformGroupCache<T>& uniformCache, bool showHidden)
+{
+	for (auto& uniform : uniformCache.floatUniforms)
+	{
+		if (!showHidden && uniform.name[0] == '_') continue;
+
+		if (uniform.useRange)
+		{
+			ImGui::SliderScalar(uniform.name.c_str(), ImGuiDataType_Float, &uniform.newValue, &uniform.min, &uniform.max, "%.3f");
+		}
+		else
+		{
+			ImGui::InputScalar(uniform.name.c_str(), ImGuiDataType_Float, &uniform.newValue);
+		}
+	}
+	for (auto& uniform : uniformCache.intUniforms)
+	{
+		if (!showHidden && uniform.name[0] == '_') continue;
+
+		if (uniform.useRange)
+		{
+			ImGui::SliderScalar(uniform.name.c_str(), ImGuiDataType_S32, &uniform.newValue, &uniform.min, &uniform.max, "%.3f");
+		}
+		else
+		{
+			ImGui::InputScalar(uniform.name.c_str(), ImGuiDataType_S32, &uniform.newValue);
+		}
+	}
+	for (auto& uniform : uniformCache.vec4Uniforms)
+	{
+		if (!showHidden && uniform.name[0] == '_') continue;
+
+		if (uniform.useRange)
+		{
+			ImGui::SliderScalarN(uniform.name.c_str(),
+				ImGuiDataType_Float, glm::value_ptr(uniform.newValue), 4,
+				glm::value_ptr(uniform.min), glm::value_ptr(uniform.max), "%.3f");
+		}
+		else
+		{
+			ImGui::InputScalarN(uniform.name.c_str(),
+				ImGuiDataType_Float, glm::value_ptr(uniform.newValue), 4);
+		}
+	}
+}
+
 MaterialLibraryWidget::MaterialLibraryWidget(const std::string& title, MaterialLibrarySPtr matLib)
 	: m_title(title)
 	, m_matLib(matLib)
@@ -39,6 +156,36 @@ MaterialLibraryWidget::MaterialLibraryWidget(const std::string& title, MaterialL
 
 void MaterialLibraryWidget::update(double /*deltaTime*/)
 {
+	if (m_matLib->programs().size() != m_programCache.size())
+	{
+		m_programCache.clear();
+
+		for (auto& [programName, program] : m_matLib->programs())
+		{
+			ProgramCache progCache;
+			progCache.ptr = program;
+
+			for (auto& [uniformName, metaInfo] : program->uniformMetaInfo())
+			{
+				UniformValue uniformValue = program->uniformDefaultValue(uniformName);
+
+				insertUniformValue(progCache, uniformValue, metaInfo);
+			}
+			m_programCache.emplace_back(std::move(progCache));
+		}
+	}
+	else
+	{
+		for (auto& program : m_programCache)
+		{
+			updatUniformValue(program, 
+				[&](const std::string& name, const UniformValue& value) -> bool {
+					return program.ptr->setUniformDefault(name, value);
+				}
+			);
+		}
+	}
+
 	if (m_matLib->materials().size() != m_materialCache.size())
 	{
 		m_materialCache.clear();
@@ -52,39 +199,7 @@ void MaterialLibraryWidget::update(double /*deltaTime*/)
 			{
 				UniformValue uniformValue = material->uniformValue(uniformName);
 
-				if (uniformValue.type == UniformType::Invalid)
-				{
-					uniformValue = metaInfo.defaultValue;
-				}
-				else if (uniformValue.type != metaInfo.type)
-				{
-					// should not happen!
-					continue;
-				}
-
-				switch (metaInfo.type)
-				{
-				case UniformType::Float:
-					matCache.floatUniforms.emplace_back(createFromUniform<float>(uniformValue, metaInfo));
-					matCache.floatUniforms.back().useRange = metaInfo.minValue.as<float>() >= -1000.f
-														  && metaInfo.maxValue.as<float>() <= 1000.f;
-					break;
-				case UniformType::Int:
-					matCache.intUniforms.emplace_back(createFromUniform<signed int>(uniformValue, metaInfo));
-					matCache.intUniforms.back().useRange = metaInfo.minValue.as<signed int>() >= -1000 
-														&& metaInfo.maxValue.as<signed int>() <= 1000;
-					break;
-				case UniformType::Vec4:
-				{
-					const glm::vec4 min = metaInfo.minValue.as<glm::vec4>();
-					const glm::vec4 max = metaInfo.maxValue.as<glm::vec4>();
-
-					matCache.vec4Uniforms.emplace_back(createFromUniform<glm::vec4>(uniformValue, metaInfo));
-					matCache.vec4Uniforms.back().useRange = min.x >= -1000.f && min.y >= -1000.f && min.z >= -1000.f
-														 && max.x <=  1000.f && max.y <=  1000.f && max.z <=  1000.f;
-					break;
-				}
-				}
+				insertUniformValue(matCache, uniformValue, metaInfo);
 			}
 			m_materialCache.emplace_back(std::move(matCache));
 		}
@@ -93,30 +208,11 @@ void MaterialLibraryWidget::update(double /*deltaTime*/)
 	{
 		for (auto& material : m_materialCache)
 		{
-			for (auto& uniform : material.floatUniforms)
-			{
-				if (!numericClose(uniform.newValue, uniform.oldValue) &&
-					material.ptr->setUniform(uniform.name, uniform.newValue))
-				{
-					uniform.oldValue = uniform.newValue;
+			updatUniformValue(material,
+				[&](const std::string& name, const UniformValue& value) -> bool {
+					return material.ptr->setUniform(name, value);
 				}
-			}
-			for (auto& uniform : material.intUniforms)
-			{
-				if (uniform.newValue != uniform.oldValue &&
-					material.ptr->setUniform(uniform.name, uniform.newValue))
-				{
-					uniform.oldValue = uniform.newValue;
-				}
-			}
-			for (auto& uniform : material.vec4Uniforms)
-			{
-				if (!numericClose(uniform.newValue, uniform.oldValue) &&
-					material.ptr->setUniform(uniform.name, uniform.newValue))
-				{
-					uniform.oldValue = uniform.newValue;
-				}
-			}
+			);
 		}
 	}
 }
@@ -131,52 +227,38 @@ void MaterialLibraryWidget::draw()
 
 	//ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-	for (auto& material : m_materialCache)
-	{
-		if (ImGui::TreeNode(material.ptr->name().c_str()))
-		{
-			ImGui::Text(material.ptr->program()->name().c_str());
+	ImGui::Checkbox("Show hidden unfiorms", &m_showHiddenUniforms);
 
-			for (auto& uniform : material.floatUniforms)
+	if (ImGui::TreeNode("Programs:"))
+	{
+		for (auto& program : m_programCache)
+		{
+			if (ImGui::TreeNode(program.ptr->name().c_str()))
 			{
-				if (uniform.useRange)
-				{
-					ImGui::SliderScalar(uniform.name.c_str(), ImGuiDataType_Float, &uniform.newValue, &uniform.min, &uniform.max, "%.3f");
-				}
-				else
-				{
-					ImGui::InputScalar(uniform.name.c_str(), ImGuiDataType_Float, &uniform.newValue);
-				}
+				drawUniformGUI(program, m_showHiddenUniforms);
+
+				ImGui::TreePop();
 			}
-			for (auto& uniform : material.intUniforms)
-			{
-				if (uniform.useRange)
-				{
-					ImGui::SliderScalar(uniform.name.c_str(), ImGuiDataType_S32, &uniform.newValue, &uniform.min, &uniform.max, "%.3f");
-				}
-				else
-				{
-					ImGui::InputScalar(uniform.name.c_str(), ImGuiDataType_S32, &uniform.newValue);
-				}
-			}
-			for (auto& uniform : material.vec4Uniforms)
-			{
-				if (uniform.useRange)
-				{
-					ImGui::SliderScalarN(uniform.name.c_str(),
-						ImGuiDataType_Float, glm::value_ptr(uniform.newValue), 4,
-						glm::value_ptr(uniform.min), glm::value_ptr(uniform.max), "%.3f");
-				}
-				else
-				{
-					ImGui::InputScalarN(uniform.name.c_str(),
-						ImGuiDataType_Float, glm::value_ptr(uniform.newValue), 4);
-				}
-			}
-			ImGui::TreePop();
 		}
+		ImGui::TreePop();
 	}
 
+	if (ImGui::TreeNode("Instances:"))
+	{
+		for (auto& material : m_materialCache)
+		{
+			if (ImGui::TreeNode(material.ptr->name().c_str()))
+			{
+				ImGui::Text(material.ptr->program()->name().c_str());
+
+				drawUniformGUI(material, m_showHiddenUniforms);
+
+				ImGui::TreePop();
+			}
+		}
+
+		ImGui::TreePop();
+	}
 
 	//for (auto& [materialName, material] : m_matLib->materials())
 	//{

@@ -1,10 +1,9 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Common/Math3D.h"
 #include "API/SharedResource.h"
 #include "Material/Uniform.h"
-
-#include <glm/glm.hpp>
 
 #include <string>
 #include <vector>
@@ -42,6 +41,9 @@ public:
 
 	bool setUniform(const std::string& name, const UniformValue& value);
 
+	UniformValue uniformDefaultValue(const std::string& name) const;
+
+	bool setUniformDefault(const std::string& name, const UniformValue& value);
 	bool setUniformDefault(const std::string& name, UniformValue&& value);
 	bool setUniformDefault(const std::string& name, ITextureSPtr texture);
 
@@ -61,11 +63,11 @@ private:
 
 	std::unordered_map<std::string, ITextureSPtr> m_defaultUniformTextures;
 
-	std::unordered_map<std::string, int> m_uniformLocationCache;
+	mutable std::unordered_map<std::string, int> m_uniformLocationCache;
 
 	std::unordered_map<std::string, UniformMetaInfo> m_nameToUniformMetaInfo;
 
-	int fetchUniformLocation(const std::string& name);
+	int fetchUniformLocation(const std::string& name) const;
 
 	void resetToDefaults();
 

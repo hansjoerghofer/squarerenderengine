@@ -2,16 +2,13 @@
 
 #include "Common/Macros.h"
 #include "Renderer/RendererState.h"
-#include "Renderer/IDrawable.h"
-#include "Renderer/IRenderTarget.h"
 
 #include <string>
 #include <vector>
 
-DECLARE_PTRS(Camera);
 DECLARE_PTRS(Material);
-DECLARE_PTRS(Geometry);
-DECLARE_PTRS(RenderTarget);
+DECLARE_PTRS(IDrawable);
+DECLARE_PTRS(IRenderTarget);
 
 struct RenderCommand
 {

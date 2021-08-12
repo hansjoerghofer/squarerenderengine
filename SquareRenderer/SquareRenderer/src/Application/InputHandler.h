@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Common/Macros.h"
-
-#include <glm/glm.hpp>
+#include "Common/Math3D.h"
 
 enum class Key
 {

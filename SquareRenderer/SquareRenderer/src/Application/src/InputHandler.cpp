@@ -2,8 +2,8 @@
 #include "Application/GLWindow.h"
 #include "Renderer/Camera.h"
 #include "Common/Logger.h"
+#include "Common/Math3D.h"
 
-#include <glm/gtx/transform.hpp>
 #include <GLFW/glfw3.h>
 
 int ConvertKey(Key k)

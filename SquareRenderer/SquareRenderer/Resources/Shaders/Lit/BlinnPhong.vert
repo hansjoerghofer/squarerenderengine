@@ -1,6 +1,7 @@
 #version 450 core
 
 #pragma include ../Includes/Camera.glsl //! #include "../Includes/Camera.glsl"
+#pragma include ../Includes/Lights.glsl //! #include "../Includes/Lights.glsl"
 
 layout (location = 0) in vec3 vPosition;
 layout (location = 1) in vec2 vUV;
@@ -15,6 +16,8 @@ out VSData
     vec2 uv;
     vec3 normalWS;
     vec3 fragPosWS;
+
+    vec4[_MAX_SIZE_LIGHT] fragPosLS;
 } vs_out;
 
 void main() 
@@ -24,6 +27,11 @@ void main()
     vs_out.uv = vUV;
     vs_out.normalWS = normalize(normalToWorld * vec4(vNormal, 0)).xyz;
     vs_out.fragPosWS = fragPosWS.xyz;
+
+    for(int i = 0; i < _numLights; ++i)
+    {
+        vs_out.fragPosLS[i] = _lightsMatrix[i] * fragPosWS;
+    }
 
     gl_Position = _VP * fragPosWS;
 }

@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Common/Math3D.h"
 #include "GUI/IWidget.h"
-
-#include <glm/glm.hpp>
 
 #include <string>
 #include <vector>
 
-DECLARE_PTRS(MaterialLibrary)
-DECLARE_PTRS(Material)
+DECLARE_PTRS(MaterialLibrary);
+DECLARE_PTRS(Material);
+DECLARE_PTRS(ShaderProgram);
 
 template<typename T>
 struct UniformValueCache
@@ -23,7 +23,8 @@ struct UniformValueCache
 	bool useRange = true;
 };
 
-struct MaterialCache
+template<typename T>
+struct UniformGroupCache
 {
 	std::string name;
 	std::string programName;
@@ -31,8 +32,11 @@ struct MaterialCache
 	std::vector<UniformValueCache<signed int>> intUniforms;
 	std::vector<UniformValueCache<glm::vec4>> vec4Uniforms;
 
-	MaterialSPtr ptr;
+	std::shared_ptr<T> ptr;
 };
+
+typedef UniformGroupCache<Material> MaterialCache;
+typedef UniformGroupCache<ShaderProgram> ProgramCache;
 
 class MaterialLibraryWidget : public IWidget
 {
@@ -52,5 +56,8 @@ private:
 
 	bool m_visible;
 
+	bool m_showHiddenUniforms = false;
+
+	std::vector<ProgramCache> m_programCache;
 	std::vector<MaterialCache> m_materialCache;
 };

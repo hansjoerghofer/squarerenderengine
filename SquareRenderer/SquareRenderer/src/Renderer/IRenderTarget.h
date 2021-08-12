@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "API/SharedResource.h"
 
-#include <glm/glm.hpp>
+#include "API/SharedResource.h"
 
 DECLARE_PTRS(IRenderTarget);
 

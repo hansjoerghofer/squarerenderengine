@@ -2,21 +2,35 @@
 
 #include "Common/Macros.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/RenderCommand.h"
 #include "Renderer/UniformBlockData.h"
 
 #include <list>
+#include <unordered_map>
 
 DECLARE_PTRS(Scene);
 DECLARE_PTRS(Camera);
 DECLARE_PTRS(GraphicsAPI);
 DECLARE_PTRS(RenderEngine);
 DECLARE_PTRS(MaterialLibrary);
+DECLARE_PTRS(ILightsource);
+DECLARE_PTRS(IRenderTarget);
+DECLARE_PTRS(RenderTarget);
+DECLARE_PTRS(IDrawable);
+DECLARE_PTRS(RenderPass);
 
 template<typename T>
 class UniformBlockData;
 struct CameraUniformBlock;
 struct LightsUniformBlock;
+
+struct ShadowData
+{
+	int index = -1;
+	glm::mat4 lightMatrice = glm::mat4(1);
+
+	ITextureSPtr data = nullptr;
+	MaterialSPtr material = nullptr;
+};
 
 class RenderEngine
 {
@@ -32,7 +46,13 @@ public:
 
 	void setRenderTarget(IRenderTargetSPtr target);
 
+	IRenderTargetSPtr renderTarget() const;
+
+	void setRenderingScale(double scale);
+
 	void setupGizmos(const std::string& programName);
+
+	const std::list<RenderPassSPtr>& renderPasses() const;
 
 	void update(double deltaTime);
 
@@ -41,6 +61,8 @@ public:
 protected:
 
 	void setupPostProcessing();
+
+	void setupShadowMapping();
 
 	GraphicsAPISPtr m_api;
 
@@ -65,7 +87,11 @@ protected:
 
 	bool m_showGizmos = true;
 
-	std::list<RenderCommand> m_renderCommandList;
+	double m_scale = 1.0;
+
+	std::list<RenderPassSPtr> m_renderPassList;
+
+	std::unordered_map<ILightsourceSPtr, ShadowData> m_shadowData;
 
 	void rebuildCommandList();
 

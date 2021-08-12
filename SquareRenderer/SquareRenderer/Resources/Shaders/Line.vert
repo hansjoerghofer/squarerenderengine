@@ -11,6 +11,6 @@ uniform mat4 modelToWorld = mat4(1);
 
 void main()
 {
-    color = vColor;
-    gl_Position = _VP * modelToWorld * vec4(vPosition, 1.0);
+    color = vColor.rgb;
+    gl_Position = _VP * modelToWorld * vec4(vPosition.xyz, 1.0);
 }

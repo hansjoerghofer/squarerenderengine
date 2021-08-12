@@ -1,26 +1,38 @@
 #include "Renderer/RenderEngine.h"
 #include "Renderer/RenderTarget.h"
 #include "Renderer/DepthBuffer.h"
+#include "Renderer/RenderPass.h"
+
 #include "Common/Logger.h"
+#include "Common/Timer.h"
+#include "Common/Math3D.h"
+
 #include "API/GraphicsAPI.h"
 #include "API/SharedResource.h"
+
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
 #include "Scene/Geometry.h"
 #include "Scene/Mesh.h"
 #include "Scene/LineSet.h"
+#include "Scene/SceneNode.h"
+#include "Scene/DirectionalLight.h"
+#include "Scene/PointLight.h"
+
 #include "Material/Material.h"
 #include "Material/MaterialLibrary.h"
 #include "Material/ShaderProgram.h"
+
 #include "Renderer/Camera.h"
 #include "Renderer/Primitive.h"
 #include "Renderer/UniformBlockData.h"
+#include "Renderer/GizmoHelper.h"
+
 #include "Texture/Texture2D.h"
 
 #include "UniformBlockDataStructs.h"
 
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <set>
 
 RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 	: m_api(api)
@@ -76,24 +88,18 @@ void RenderEngine::setRenderTarget(IRenderTargetSPtr target)
 
 void RenderEngine::render()
 {
-	if (m_renderCommandList.empty())
+	for (const auto& pass : m_renderPassList)
 	{
-		return;
-	}
+		m_renderer->setTarget(pass->target());
 
-	updateLightsUniformData();
-	updateCameraUniformData(m_mainCamera);
+		m_renderer->applyState(pass->rendererState());
 
-	for (const RenderCommand& cmd : m_renderCommandList)
-	{
-		m_renderer->setTarget(cmd.target);
+		pass->preRender();
 
-		m_renderer->applyState(cmd.state);
-
-		for (IDrawableSPtr elem : cmd.drawables)
+		for (const auto& elem : pass->drawables())
 		{
 			// TODO override logic!
-			MaterialSPtr mat = cmd.overrideMaterial ? cmd.overrideMaterial : elem->material();
+			MaterialSPtr mat = pass->material() ? pass->material() : elem->material();
 			if (mat)
 			{
 				elem->preRender(mat);
@@ -104,21 +110,33 @@ void RenderEngine::render()
 	}
 }
 
-void RenderEngine::update(double /*deltaTime*/)
+void RenderEngine::update(double deltaTime)
 {
-	if (!m_outputTarget || !m_gBuffer) return;
+	if (!m_outputTarget || !m_gBuffer || !m_mainCamera) return;
 
-	if(m_gBuffer->width() != m_outputTarget->width() ||
-	   m_gBuffer->height() != m_outputTarget->height())
+	if(m_gBuffer->width() != static_cast<int>(m_outputTarget->width() * m_scale) ||
+	   m_gBuffer->height() != static_cast<int>(m_outputTarget->height() * m_scale))
 	{
+		m_mainCamera->updateResolution(
+			m_outputTarget->width(), 
+			m_outputTarget->height());
+
 		m_gBuffer.reset();
 		rebuildCommandList();
+	}
+
+	updateLightsUniformData();
+	updateCameraUniformData(m_mainCamera);
+
+	for (const auto& pass : m_renderPassList)
+	{
+		pass->update(deltaTime);
 	}
 }
 
 void RenderEngine::rebuildCommandList()
 {
-	m_renderCommandList.clear();
+	m_renderPassList.clear();
 
 	if (!m_mainCamera || !m_outputTarget)
 	{
@@ -128,10 +146,13 @@ void RenderEngine::rebuildCommandList()
 	if (!m_gBuffer)
 	{
 		Texture2DSPtr colorBuffer = std::make_shared<Texture2D>(
-			m_outputTarget->width(), m_outputTarget->height(),
+			static_cast<int>(m_outputTarget->width() * m_scale), 
+			static_cast<int>(m_outputTarget->height() * m_scale),
 			TextureFormat::RGBAFloat);
+
 		m_gBuffer = std::make_shared<RenderTarget>(
-			colorBuffer, DepthBufferFormat::Depth24Stencil8);
+			colorBuffer, 
+			DepthBufferFormat::Depth24Stencil8);
 
 		if (!m_api->allocate(m_gBuffer))
 		{
@@ -143,14 +164,18 @@ void RenderEngine::rebuildCommandList()
 	// scene
 	if (m_scene)
 	{
+		setupShadowMapping();
+
 		RenderCommand cmd;
 		cmd.name = "Opaque Scene";
 		cmd.target = m_gBuffer;
 		cmd.state.clearColor = true;
 		//cmd.state.enableWireframe = true;
-		cmd.state.color = glm::vec4(.6f, .6f, .8f, 1);
+		cmd.state.color = glm::vec4(.0f, .0f, .0f, 1);
 
 		cmd.drawables.reserve(m_scene->nodeNum());
+
+		std::set<ShaderProgramSPtr> usedPrograms;
 
 		auto t = m_scene->traverser();
 		while (t.hasNext())
@@ -159,27 +184,52 @@ void RenderEngine::rebuildCommandList()
 			if (drawable->geometry())
 			{
 				cmd.drawables.push_back(drawable);
+
+				usedPrograms.insert(drawable->material()->program());
 			}
 		}
 
-		m_renderCommandList.emplace_back(std::move(cmd));
+		for (ShaderProgramSPtr program : usedPrograms)
+		{
+			// set shadow maps
+			for (const auto& [light, shadowData] : m_shadowData)
+			{
+				const glm::vec4 shadowDim = glm::vec4(
+					shadowData.data->width(),
+					shadowData.data->height(),
+					1.f / shadowData.data->width(),
+					1.f / shadowData.data->height()
+				);
+				program->setUniformDefault("_shadowMapDim", shadowDim);
+				program->setUniformDefault(
+					"_shadowMaps[" + std::to_string(shadowData.index) + "]",
+					shadowData.data);
+			}
+		}
+
+		m_renderPassList.emplace_back(
+			new RenderPass(std::move(cmd)));
 	}
 
 	setupPostProcessing();
 
-	if(m_gizmos)
+	if (m_gizmos)
 	{
+		// TODO use gBuffer depth as depth buffer for
+		// occluded bounding boxes!
+
 		RenderCommand cmd;
 		cmd.name = "Gizmos";
 		cmd.target = m_outputTarget;
 		cmd.state.clearColor = false;
 		cmd.state.clearDepth = false;
 		cmd.state.writeDepth = false;
-		cmd.state.cullingMode = Culling::None;
+		//cmd.state.depthTestMode = DepthTest::LessEqual;
 		cmd.state.primitive = PrimitiveMode::Lines;
 		cmd.drawables.push_back(m_gizmos);
 
-		m_renderCommandList.emplace_back(std::move(cmd));
+		m_renderPassList.emplace_back(
+			new RenderPass(std::move(cmd)));
 	}
 }
 
@@ -193,27 +243,39 @@ void RenderEngine::setupGizmos(const std::string& programName)
 		return;
 	}
 
-	constexpr glm::vec3 origin(0, 0, 0);
-	constexpr glm::vec3 axisX(1, 0, 0);
-	constexpr glm::vec3 axisY(0, 1, 0);
-	constexpr glm::vec3 axisZ(0, 0, 1);
+	std::vector<LineSegment> lines;
 
-	glm::vec3 lightDir = glm::normalize(glm::vec3(1, -1, -0.5));
-	glm::vec3 lightPos = glm::vec3(0.2, 0.2, 0.7);
+	const auto axisGizmo = GizmoHelper::createCoordinateAxis();
+	lines.insert(lines.end(), axisGizmo.begin(), axisGizmo.end());
 
-	GeometrySPtr gizmoGeometry = LineSetSPtr(new LineSet({
-		// axis
-		{ origin, axisX * 10.f, axisX },
-		{ origin, axisY * 10.f, axisY },
-		{ origin, axisZ * 10.f, axisZ },
-		//dir light
-		{ -lightDir, origin - lightDir * .8f, glm::vec3(1,1,0) },
-		//point light
-		{ lightPos - axisX * .05f, lightPos + axisX * .05f, glm::vec3(1,1,0) },
-		{ lightPos - axisY * .05f, lightPos + axisY * .05f, glm::vec3(1,1,0) },
-		{ lightPos - axisZ * .05f, lightPos + axisZ * .05f, glm::vec3(1,1,0) },
-		}));
+	if (m_scene)
+	{
+		// light sources
+		for (ILightsourceSPtr light : m_scene->lights())
+		{
+			const auto lightGizmo = GizmoHelper::createLightsource(light);
+			lines.insert(lines.end(), lightGizmo.begin(), lightGizmo.end());
+		}
 
+		//bounding boxes
+		auto t = m_scene->traverser();
+		while (t.hasNext())
+		{
+			SceneNodeSPtr node = t.next();
+			
+			if (node->bounds().empty()) continue;
+
+			const BoundingBox worldBounds = node->worldTransform() * node->bounds();
+
+			const auto aabbGizmo = GizmoHelper::createBoundingBox(worldBounds);
+			lines.insert(lines.end(), aabbGizmo.begin(), aabbGizmo.end());
+		}
+
+		const auto aabbGizmo = GizmoHelper::createBoundingBox(m_scene->sceneBounds());
+		lines.insert(lines.end(), aabbGizmo.begin(), aabbGizmo.end());
+	}
+
+	GeometrySPtr gizmoGeometry = LineSetSPtr(new LineSet(lines));
 	if (!m_api->allocate(gizmoGeometry))
 	{
 		Logger::Warning("Error while allocating gizmo geometry buffers.");
@@ -264,7 +326,117 @@ void RenderEngine::setupPostProcessing()
 
 		cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, tonemappingMat));
 
-		m_renderCommandList.emplace_back(std::move(cmd));
+		m_renderPassList.emplace_back(
+			new RenderPass(std::move(cmd)));
+	}
+}
+
+IRenderTargetSPtr RenderEngine::renderTarget() const
+{
+	return m_outputTarget;
+}
+
+void RenderEngine::setRenderingScale(double scale)
+{
+	m_scale = scale;
+}
+
+const std::list<RenderPassSPtr>& RenderEngine::renderPasses() const
+{
+	return m_renderPassList;
+}
+
+void RenderEngine::setupShadowMapping()
+{
+	std::vector<IDrawableSPtr> shadowCasters;
+	shadowCasters.reserve(m_scene->nodeNum());
+
+	auto t = m_scene->traverser();
+	while (t.hasNext())
+	{
+		IDrawableSPtr drawable = t.next();
+		if (drawable->geometry())
+		{
+			shadowCasters.push_back(drawable);
+		}
+	}
+
+	const int shadowMapWidth = 1024;
+	const int shadowMapHeight = 1024;
+
+	const TextureSampler depthMapSampler = { 
+		TextureFilter::Linear, 
+		TextureWrap::ClampToBorder, 
+		false, glm::vec4(1,1,1,1) 
+	};
+
+	const glm::mat4 biasMatrix(
+		0.5, 0.0, 0.0, 0.0,
+		0.0, 0.5, 0.0, 0.0,
+		0.0, 0.0, 0.5, 0.0,
+		0.5, 0.5, 0.5, 1.0);
+
+	BoundingBox sceneBounds = m_scene->sceneBounds();
+
+	int index = 0;
+	for (ILightsourceSPtr light : m_scene->lights())
+	{
+		if (!light->isShadowCaster()) continue;
+
+		if (light->type() != LightsourceType::Directional) continue;
+
+		// create shadow FBO
+		Texture2DSPtr shadowMap = std::make_shared<Texture2D>(shadowMapWidth, shadowMapHeight,
+			TextureFormat::DepthFloat, depthMapSampler);
+
+		RenderTargetSPtr shadowMapTarget = std::make_shared<RenderTarget>(
+			std::make_shared<DepthTextureWrapper>(shadowMap));
+
+		if (!m_api->allocate(shadowMapTarget))
+		{
+			continue;
+		}
+
+		DirectionalLightSPtr dirLight = std::static_pointer_cast<DirectionalLight>(light);
+
+		// create light Camera
+		const glm::vec3 lightDirection = dirLight->direction();
+		glm::mat4 lightView = glm::lookAt(
+			sceneBounds.center(),
+			sceneBounds.center() + lightDirection,
+			glm::vec3(0, 1, 0));
+
+		BoundingBox cameraVolume = lightView * sceneBounds;
+
+		glm::mat4 lightProj = glm::ortho(
+			cameraVolume.min().x, cameraVolume.max().x,
+			cameraVolume.min().y, cameraVolume.max().y,
+			cameraVolume.min().z, cameraVolume.max().z );
+
+		glm::mat4 worldToLight = lightProj * lightView;
+
+		MaterialSPtr shadowMat = m_matlib->instanciate("Util.ShadowMapping");
+		shadowMat->setUniform("worldToLight", worldToLight);
+
+		RenderCommand cmd;
+		cmd.name = "ShadowMapping";
+		cmd.target = shadowMapTarget;
+		cmd.state.clearColor = false;
+		cmd.state.writeColor = false;
+		cmd.state.depthOffset = glm::vec2(4., 1.);
+		cmd.overrideMaterial = shadowMat;
+		cmd.drawables = shadowCasters;
+		m_renderPassList.emplace_back(
+			new RenderPass(std::move(cmd)));
+
+		ShadowData sData = ShadowData();
+		sData.index = index;
+		sData.lightMatrice = biasMatrix * worldToLight;
+		sData.data = shadowMap;
+		sData.material = shadowMat;
+		m_shadowData[dirLight] = std::move(sData);
+
+		++index;
 	}
 }
 
@@ -300,16 +472,44 @@ void RenderEngine::updateCameraUniformData(CameraSPtr camera)
 void RenderEngine::updateLightsUniformData()
 {
 	LightsUniformBlock data = LightsUniformBlock();
-	data.ambientColor = glm::vec4(.5, .5, .5, 1);
+	data.ambientColor = glm::vec4(.1, .1, .1, 1);
 	data.numLights = 0;
-	
-	data.lightsPosWS[data.numLights] = glm::vec4(1, 1, 1, 1);
-	data.lightsColor[data.numLights] = glm::vec4(0.2, 0.2, 0.7, 1);
-	data.numLights++;
 
-	data.lightsPosWS[data.numLights] = glm::normalize(glm::vec4(1, -1, -0.5, 0));
-	data.lightsColor[data.numLights] = glm::vec4(0.2, 0.7, 0.1, 1);
-	data.numLights++;
+	for (ILightsourceSPtr light : m_scene->lights())
+	{
+		if (data.numLights == MAX_LIGHT_COUNT)
+		{
+			break;
+		}
+
+		glm::vec4 vec;
+		switch (light->type())
+		{
+		case LightsourceType::Directional:
+			vec = glm::vec4(std::static_pointer_cast<DirectionalLight>(light)->direction(), 0);
+			break;
+		case LightsourceType::Point:
+			vec = glm::vec4(std::static_pointer_cast<PointLight>(light)->position(), 1);
+			break;
+		default:
+			continue;
+		}
+
+		data.lightsPosWS[data.numLights] = vec;
+		data.lightsColor[data.numLights] = glm::vec4(light->color(), light->intensity());
+		
+		ShadowData shadowData = ShadowData();
+		auto found = m_shadowData.find(light);
+		if (found != m_shadowData.end())
+		{
+			shadowData = found->second;
+		}
+		// TODO update shadow matrix/material if light transform changed!
+		data.lightsMatrix[data.numLights] = shadowData.lightMatrice;
+		data.shadowMapIndex[data.numLights] = shadowData.index;
+		
+		data.numLights++;
+	}
 
 	m_lightsUniformBlock->update(data);
 }

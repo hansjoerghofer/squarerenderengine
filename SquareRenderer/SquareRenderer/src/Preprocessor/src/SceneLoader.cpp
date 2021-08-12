@@ -1,12 +1,11 @@
-#include "Preprocessor/SceneLoader.h"
 #include "Common/Logger.h"
+#include "Common/Math3D.h"
+
+#include "Preprocessor/SceneLoader.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
 #include "Scene/Mesh.h"
 #include "Material/MaterialLibrary.h"
-
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -14,13 +13,11 @@
 
 inline void Map(const aiMatrix4x4& source, glm::mat4& target)
 {
-    for (int c = 0; c < 4; ++c)
-    {
-        for (int r = 0; r < 4; ++r)
-        {
-            target[r][c] = source[r][c];
-        }
-    }
+    //the a,b,c,d in assimp is the row ; the 1,2,3,4 is the column
+    target[0][0] = source.a1; target[1][0] = source.a2; target[2][0] = source.a3; target[3][0] = source.a4;
+    target[0][1] = source.b1; target[1][1] = source.b2; target[2][1] = source.b3; target[3][1] = source.b4;
+    target[0][2] = source.c1; target[1][2] = source.c2; target[2][2] = source.c3; target[3][2] = source.c4;
+    target[0][3] = source.d1; target[1][3] = source.d2; target[2][3] = source.d3; target[3][3] = source.d4;
 }
 
 inline void Map(const aiVector3D& source, glm::vec2& target)
@@ -43,6 +40,14 @@ inline void Map(const aiColor3D& source, glm::vec3& target)
     target.b = source.b;
 }
 
+inline void Map(const aiQuaternion& source, glm::quat& target)
+{
+    target.w = source.w;
+    target.x = source.x;
+    target.y = source.y;
+    target.z = source.z;
+}
+
 MaterialSPtr SceneLoader::processMaterial(const aiMaterial& mat)
 {
     aiString name;
@@ -51,6 +56,21 @@ MaterialSPtr SceneLoader::processMaterial(const aiMaterial& mat)
     Logger::Info("Process Material '%s'", name.C_Str());
 
     return m_matLib->instanciate(m_defaultProgramName, std::string(name.C_Str()));
+}
+
+void LogMatrix(const std::string& description, const glm::mat4& m)
+{
+    Logger::Debug("Matrix: %s\n"
+        "%.2f,\t\t%.2f,\t\t%.2f,\t\t%.2f\n"
+        "%.2f,\t\t%.2f,\t\t%.2f,\t\t%.2f\n"
+        "%.2f,\t\t%.2f,\t\t%.2f,\t\t%.2f\n"
+        "%.2f,\t\t%.2f,\t\t%.2f,\t\t%.2f\n",
+        description.c_str(),
+        m[0][0], m[1][0], m[2][0], m[3][0],
+        m[0][1], m[1][1], m[2][1], m[3][1],
+        m[0][2], m[1][2], m[2][2], m[3][2],
+        m[0][3], m[1][3], m[2][3], m[3][3]
+    );
 }
 
 MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
@@ -127,12 +147,21 @@ SceneNodeSPtr SceneLoader::processNode(
     Map(currentNode.mTransformation, localTransform);
     newNode->setLocalTransform(localTransform);
 
+    //LogMatrix(newNode->name(), newNode->localTransform());
+
     if (currentNode.mNumMeshes > 0)
     {
         const auto& mesh = meshSet[currentNode.mMeshes[0]];
 
         newNode->setGeometry(mesh.first);
         newNode->setMaterial(materialSet[mesh.second]);
+
+        BoundingBox aabb;
+        for (const Vertex& v : mesh.first->vertices())
+        {
+            aabb.insert(v.position);
+        }
+        newNode->setBounds(aabb);
     }
 
     for (unsigned int i = 0; i < currentNode.mNumChildren; ++i)
@@ -181,7 +210,7 @@ SceneUPtr SceneLoader::loadFromFile(const std::string& filepath)
         | aiProcess_JoinIdenticalVertices
         | aiProcess_GenSmoothNormals
         | aiProcess_GenBoundingBoxes
-        | aiProcess_PreTransformVertices        //! Flatten hierachy
+        //| aiProcess_PreTransformVertices        //! Apply transformations
         | aiProcess_SortByPType                 //! Split up heterogeneous mesh types
         | aiProcess_RemoveComponent
         //| aiProcess_RemoveRedundantMaterials
@@ -218,7 +247,8 @@ SceneUPtr SceneLoader::loadFromFile(const std::string& filepath)
     if (rootNode)
     {
         // scale root
-        rootNode->setLocalTransform(glm::scale(rootNode->localTransform(), glm::vec3(0.001f)));
+        //rootNode->setLocalTransform(glm::scale(rootNode->localTransform(), glm::vec3(0.1f)));
+        //rootNode->setLocalTransform(glm::scale(rootNode->localTransform(), glm::vec3(0.001f)));
 
         scene = std::make_unique<Scene>(rootNode);
     }

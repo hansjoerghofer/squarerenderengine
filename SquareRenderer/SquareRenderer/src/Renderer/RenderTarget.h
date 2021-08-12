@@ -7,8 +7,9 @@
 #include <vector>
 
 DECLARE_PTRS(RenderTarget);
+DECLARE_PTRS(IDepthAttachment);
 DECLARE_PTRS(ITexture);
-DECLARE_PTRS(DepthBuffer);
+DECLARE_PTRS(Texture2D);
 enum class DepthBufferFormat : int;
 
 class RenderTarget : public IRenderTarget
@@ -22,10 +23,12 @@ public:
 		DepthBufferFormat format);
 
 	explicit RenderTarget(ITextureSPtr colorTarget,
-		DepthBufferSPtr depthBuffer = nullptr);
+		IDepthAttachmentSPtr depthBuffer = nullptr);
 
-	RenderTarget(std::vector<ITextureSPtr>&& colorTargets,
-		DepthBufferSPtr depthBuffer = nullptr);
+	explicit RenderTarget(std::vector<ITextureSPtr>&& colorTargets,
+		IDepthAttachmentSPtr depthBuffer = nullptr);
+
+	explicit RenderTarget(IDepthAttachmentSPtr depthBuffer);
 
 	virtual int width() const override;
 
@@ -33,9 +36,9 @@ public:
 
 	SharedResource::Handle handle() const override;
 
-	const std::vector<ITextureSPtr>& colorTargets()const;
+	const std::vector<ITextureSPtr>& colorTargets() const;
 
-	DepthBufferSPtr depthBuffer() const;
+	IDepthAttachmentSPtr depthBuffer() const;
 
 	void link(IRenderTargetResourceUPtr resource);
 
@@ -43,7 +46,7 @@ protected:
 
 	std::vector<ITextureSPtr> m_colorTargets;
 
-	DepthBufferSPtr m_depthBuffer;
+	IDepthAttachmentSPtr m_depthBuffer;
 
 	IRenderTargetResourceUPtr m_linkedResource;
 };

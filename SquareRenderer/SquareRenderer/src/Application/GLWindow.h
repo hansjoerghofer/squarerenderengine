@@ -26,7 +26,7 @@ public:
 
 	void update(double deltaTime);
 
-	void renderGUI();
+	void render();
 	void swapBuffers();
 
 	virtual int width() const override;
@@ -66,6 +66,8 @@ protected:
 private:
 	friend InputHandler;
 
+	void renderGUI();
+	
 	void cleanupGUI();
 
 	void handleResize(int width, int height);

@@ -1,13 +1,12 @@
+#include "Common/Logger.h"
+#include "Common/Math3D.h"
+
 #include "Preprocessor/MaterialImporter.h"
 #include "Preprocessor/ShaderParser.h"
 #include "API/GraphicsAPI.h"
 #include "Material/MaterialLibrary.h"
 #include "Material/ShaderProgram.h"
-#include "Common/Logger.h"
 #include "Texture/Texture2D.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <fstream>
 #include <exception>

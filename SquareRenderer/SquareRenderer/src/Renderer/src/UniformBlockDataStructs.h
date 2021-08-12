@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include "Common/Math3D.h"
 
 struct CameraUniformBlock
 {
@@ -13,14 +13,18 @@ struct CameraUniformBlock
 	alignas(16) glm::vec4 clip;  // clipping planes (n,f,1/n,1/f)
 };
 
-constexpr auto MAX_LIGHT_COUNT = 4;
+constexpr auto MAX_LIGHT_COUNT = 1;
 struct LightsUniformBlock
 {
 	alignas(16) glm::vec4 ambientColor;
 
-	alignas(16) int numLights;
+	alignas(4) int numLights;
 	alignas(16) glm::vec4 lightsPosWS[MAX_LIGHT_COUNT];
 	alignas(16) glm::vec4 lightsColor[MAX_LIGHT_COUNT];
+
+	// shadow mapping
+	alignas(16) glm::mat4 lightsMatrix[MAX_LIGHT_COUNT];
+	alignas(16) int shadowMapIndex[MAX_LIGHT_COUNT];
 };
 
 bool operator==(const CameraUniformBlock& l, const CameraUniformBlock& r)
@@ -42,7 +46,9 @@ bool operator==(const LightsUniformBlock& l, const LightsUniformBlock& r)
 	return l.ambientColor == r.ambientColor &&
 		l.numLights == r.numLights &&
 		l.lightsPosWS == r.lightsPosWS &&
-		l.lightsColor == r.lightsColor;
+		l.lightsColor == r.lightsColor &&
+		l.lightsMatrix == r.lightsMatrix &&
+		l.shadowMapIndex == r.shadowMapIndex;
 }
 
 bool operator!=(const LightsUniformBlock& l, const LightsUniformBlock& r)

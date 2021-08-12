@@ -20,15 +20,21 @@ RenderTarget::RenderTarget(
 }
 
 RenderTarget::RenderTarget(
-	ITextureSPtr colorTarget, DepthBufferSPtr depthBuffer)
+	ITextureSPtr colorTarget, IDepthAttachmentSPtr depthBuffer)
 	: m_colorTargets({ colorTarget })
 	, m_depthBuffer(depthBuffer)
 {
 }
 
 RenderTarget::RenderTarget(
-	std::vector<ITextureSPtr>&& colorTargets, DepthBufferSPtr depthBuffer)
+	std::vector<ITextureSPtr>&& colorTargets, IDepthAttachmentSPtr depthBuffer)
 	: m_colorTargets(std::move(colorTargets))
+	, m_depthBuffer(depthBuffer)
+{
+}
+
+RenderTarget::RenderTarget(IDepthAttachmentSPtr depthBuffer)
+	: m_colorTargets()
 	, m_depthBuffer(depthBuffer)
 {
 }
@@ -39,6 +45,10 @@ int RenderTarget::width() const
 	{
 		return m_colorTargets.front()->width();
 	}
+	else if (m_depthBuffer)
+	{
+		return m_depthBuffer->width();
+	}
 	return 0;
 }
 
@@ -47,6 +57,10 @@ int RenderTarget::height() const
 	if (!m_colorTargets.empty())
 	{
 		return m_colorTargets.front()->height();
+	}
+	else if (m_depthBuffer)
+	{
+		return m_depthBuffer->height();
 	}
 	return 0;
 }
@@ -68,7 +82,7 @@ const std::vector<ITextureSPtr>& RenderTarget::colorTargets() const
 	return m_colorTargets;
 }
 
-DepthBufferSPtr RenderTarget::depthBuffer() const
+IDepthAttachmentSPtr RenderTarget::depthBuffer() const
 {
 	return m_depthBuffer;
 }

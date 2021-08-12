@@ -76,7 +76,7 @@ Renderer::Renderer()
 void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
 {
     mat->bind();
-    bindTextures(*mat);
+    bindTextures(mat);
     geo->bind();
 
     GLenum primitiveMode = translate(m_currentState.primitive);
@@ -235,22 +235,25 @@ void Renderer::applyState(const RendererState& state, bool force)
     GraphicsAPICheckError();
 }
 
-void Renderer::bindTextures(const Material& mat)
+void Renderer::bindTextures(MaterialSPtr mat)
 {
-    auto textures = mat.uniformTextures();
+    auto textures = mat->uniformTextures();
     textures.insert(
-        mat.program()->defaultTextures().begin(),
-        mat.program()->defaultTextures().end());
+        mat->program()->defaultTextures().begin(),
+        mat->program()->defaultTextures().end());
 
     m_boundTextures.reserve(textures.size());
 
-    GLenum activeTexture = GL_TEXTURE0;
+    int activeTextureUnit = 0;
     for (const auto& [name, texture] : textures)
     {
-        glActiveTexture(activeTexture++);
+        mat->setUniform(name, activeTextureUnit);
+        glActiveTexture(GL_TEXTURE0 + activeTextureUnit);
         texture->bind();
 
         m_boundTextures.push_back(texture);
+
+        ++activeTextureUnit;
     }
 }
 

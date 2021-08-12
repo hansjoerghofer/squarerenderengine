@@ -1,6 +1,6 @@
 #include "Renderer/Camera.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "Common/Math3D.h"
 
 Camera::Camera(int width, int height, float near, float far)
 	: m_width(width)

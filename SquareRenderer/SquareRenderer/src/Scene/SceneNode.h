@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "Renderer/IDrawable.h"
+#include "Common/Math3D.h"
 
-#include <glm/glm.hpp>
+#include "Renderer/IDrawable.h"
+#include "Scene/BoundingBox.h"
 
 #include <string>
 #include <list>
@@ -47,6 +48,12 @@ public:
 
 	virtual void postRender() override;
 
+	void setBounds(const BoundingBox& bounds);
+
+	const BoundingBox& bounds() const;
+
+	BoundingBox hierarchicalBounds() const;
+
 private:
 	std::string m_name;
 
@@ -57,6 +64,8 @@ private:
 	GeometrySPtr m_geometry;
 
 	SceneNodeWPtr m_parent;
+
+	BoundingBox m_bounds;
 
 	std::list<SceneNodeSPtr> m_children;
 };

@@ -29,7 +29,7 @@ public:
 
 private:
 
-	void bindTextures(const Material& mat);
+	void bindTextures(MaterialSPtr mat);
 
 	void unbindTextures();
 

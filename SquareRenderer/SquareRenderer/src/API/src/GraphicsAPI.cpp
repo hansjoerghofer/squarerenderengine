@@ -12,7 +12,9 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/gtc/type_ptr.hpp>
+
+// TODO check if it must be included adter GLFW?
+#include "Common/Math3D.h"
 
 struct GLTextureFormat
 {
@@ -597,21 +599,24 @@ public:
 
         if (rendertarget->depthBuffer())
         {
-            GLenum depthFormat;
-            switch (rendertarget->depthBuffer()->format())
+            GLenum depthFormat = GL_DEPTH_ATTACHMENT;
+            if (rendertarget->depthBuffer()->hasStencilBuffer())
             {
-            case DepthBufferFormat::Depth24Stencil8:
-            case DepthBufferFormat::DepthFloatStencil8:
                 depthFormat = GL_DEPTH_STENCIL_ATTACHMENT;
-                break;
-            default:
-                depthFormat = GL_DEPTH_ATTACHMENT;
-                break;
             }
 
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, 
-                depthFormat, GL_RENDERBUFFER,
-                rendertarget->depthBuffer()->handle());
+            if (rendertarget->depthBuffer()->attachmentType() == DepthAttachmentType::Texture2D)
+            {
+                glFramebufferTexture2D(GL_FRAMEBUFFER,
+                    depthFormat, GL_TEXTURE_2D,
+                    rendertarget->depthBuffer()->handle(), 0);
+            }
+            else
+            {
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER,
+                    depthFormat, GL_RENDERBUFFER,
+                    rendertarget->depthBuffer()->handle());
+            }
         }
 
         if (rendertarget->colorTargets().empty())
@@ -797,19 +802,35 @@ bool GraphicsAPI::allocate(RenderTargetSPtr rendertarget)
     if (rendertarget->depthBuffer() &&
         rendertarget->depthBuffer()->handle() == SharedResource::INVALID_HANDLE)
     {
-        IDepthBufferResourceUPtr depthResource(
-            new GLRenderbuffer(rendertarget->depthBuffer()));
-
-        if (depthResource && depthResource->isValid())
+        if (rendertarget->depthBuffer()->attachmentType() == DepthAttachmentType::Renderbuffer)
         {
-            rendertarget->depthBuffer()->link(std::move(depthResource));
+            DepthBufferSPtr depthBuffer = std::static_pointer_cast<DepthBuffer>(
+                rendertarget->depthBuffer());
+            IDepthBufferResourceUPtr depthResource(new GLRenderbuffer(depthBuffer));
+
+            if (depthResource && depthResource->isValid())
+            {
+                depthBuffer->link(std::move(depthResource));
+            }
+            else
+            {
+                Logger::Error("Could not allocate Render Target,"
+                    " invalid depth buffer.");
+                return false;
+            }
         }
         else
         {
-            Logger::Error("Could not allocate Render Target,"
-                          " invalid depth buffer.");
-            return false;
+            DepthTextureWrapperSPtr depthBuffer = std::static_pointer_cast<DepthTextureWrapper>(
+                rendertarget->depthBuffer());
+            if (!allocate(depthBuffer->texture()))
+            {
+                Logger::Error("Could not allocate Render Target,"
+                    " invalid color target.");
+                return false;
+            }
         }
+        
     }
 
     IRenderTargetResourceUPtr resource(new GLFramebuffer(rendertarget));

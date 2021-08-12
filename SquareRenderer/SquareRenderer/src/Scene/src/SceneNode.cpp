@@ -62,7 +62,7 @@ glm::mat4 SceneNode::worldTransform() const
     }
     else
     {
-        return m_transform;
+        return localTransform();
     }
 }
 
@@ -97,4 +97,26 @@ void SceneNode::preRender(MaterialSPtr material)
 void SceneNode::postRender()
 {
 
+}
+
+void SceneNode::setBounds(const BoundingBox& bounds)
+{
+    m_bounds = bounds;
+}
+
+const BoundingBox& SceneNode::bounds() const
+{
+    return m_bounds;
+}
+
+BoundingBox SceneNode::hierarchicalBounds() const
+{
+    BoundingBox aabb = bounds();
+
+    for (SceneNodeSPtr child : m_children)
+    {
+        aabb.merge(child->localTransform() * child->hierarchicalBounds());
+    }
+
+    return aabb;
 }

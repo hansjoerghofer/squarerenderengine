@@ -29,6 +29,24 @@ private:
 	std::chrono::system_clock::time_point m_start;
 };
 
+class ScopedTimer : Timer
+{
+public:
+	explicit ScopedTimer(double& outElapsed)
+		: Timer()
+		, m_outElapsed(outElapsed)
+	{
+	}
+
+	~ScopedTimer()
+	{
+		m_outElapsed = elapsed();
+	}
+
+private:
+	double& m_outElapsed;
+};
+
 class TimerLog
 {
 public:

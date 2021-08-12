@@ -1,3 +1,4 @@
 Lit.BlinnPhong  Lit/BlinnPhong.vert Lit/BlinnPhong.frag
 Debug.Line  Line.vert Line.frag
 PP.Tonemapping  PostProcessing/Fullscreen.vert  PostProcessing/Tonemapping.frag
+Util.ShadowMapping	Util/ShadowMapping.vert	Util/ShadowMapping.frag

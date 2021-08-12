@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "Geometry.h"
+#include "Common/Math3D.h"
 
-#include <glm/glm.hpp>
+#include "Geometry.h"
 
 #include <vector>
 

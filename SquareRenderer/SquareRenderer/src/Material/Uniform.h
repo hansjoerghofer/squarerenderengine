@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include "Common/Math3D.h"
 
 #include <any>
 #include <string>

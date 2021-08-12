@@ -50,6 +50,19 @@ bool Material::isBound() const
 	return m_isBound;
 }
 
+bool Material::setUniform(const std::string& name, const UniformValue& value)
+{
+	if (isBound())
+	{
+		return m_program->setUniform(name, value);
+	}
+	else
+	{
+		m_uniformStorage[name] = value;
+		return true;
+	}
+}
+
 bool Material::setUniform(const std::string& name, UniformValue&& value)
 {
 	if (isBound())
@@ -65,8 +78,13 @@ bool Material::setUniform(const std::string& name, UniformValue&& value)
 
 bool Material::setUniform(const std::string& name, ITextureSPtr value)
 {
-	const int activeTextureSlot = static_cast<int>(m_uniformStorage.size());
+	/*const int activeTextureSlot = static_cast<int>(m_uniformStorage.size());
 	if (setUniform(name, activeTextureSlot))
+	{
+		m_textureStorage[name] = value;
+		return true;
+	}*/
+	if (!isBound() && value)
 	{
 		m_textureStorage[name] = value;
 		return true;

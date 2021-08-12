@@ -1,8 +1,7 @@
 #include "Application/GLWindow.h"
 #include "Application/InputHandler.h"
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "Common/Timer.h"
 
 #include "GUI/imgui.h"
 #include "GUI/imgui_impl_glfw.h"
@@ -10,6 +9,8 @@
 #include "GUI/IWidget.h"
 #include "GUI/LogWidget.h"
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <stdexcept>
 
 GLWindow::GLWindow(int width, int height, const std::string& title)
@@ -76,6 +77,11 @@ void GLWindow::close()
     {
         glfwSetWindowShouldClose(m_handle, true);
     }
+}
+
+void GLWindow::render()
+{
+    renderGUI();
 }
 
 void GLWindow::renderGUI()

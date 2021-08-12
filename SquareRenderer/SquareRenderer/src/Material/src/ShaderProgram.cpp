@@ -120,6 +120,20 @@ bool ShaderProgram::setUniform(const std::string& name, const UniformValue& valu
 	return setUniform(location, value);
 }
 
+UniformValue ShaderProgram::uniformDefaultValue(const std::string& name) const
+{
+	const int location = fetchUniformLocation(name);
+	if (location != -1)
+	{
+		const auto& found = m_defaultUniformStorage.find(location);
+		if (found != m_defaultUniformStorage.end())
+		{
+			return found->second;
+		}
+	}
+	return UniformValue();
+}
+
 const std::unordered_map<std::string, UniformMetaInfo>& ShaderProgram::uniformMetaInfo() const
 {
 	return m_nameToUniformMetaInfo;
@@ -128,6 +142,22 @@ const std::unordered_map<std::string, UniformMetaInfo>& ShaderProgram::uniformMe
 const std::unordered_map<std::string, ITextureSPtr>& ShaderProgram::defaultTextures() const
 {
 	return m_defaultUniformTextures;
+}
+
+bool ShaderProgram::setUniformDefault(const std::string& name, const UniformValue& value)
+{
+	if (m_linkedResource)
+	{
+		const int location = fetchUniformLocation(name);
+
+		if (location != -1)
+		{
+			m_defaultUniformStorage[location] = value;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool ShaderProgram::setUniformDefault(const std::string& name, UniformValue&& value)
@@ -166,7 +196,7 @@ bool ShaderProgram::bindUniformBlock(const std::string& name, int bindingPoint)
 	return false;
 }
 
-int ShaderProgram::fetchUniformLocation(const std::string& name)
+int ShaderProgram::fetchUniformLocation(const std::string& name) const
 {
 	const auto& found = m_uniformLocationCache.find(name);
 	if (found != m_uniformLocationCache.end())

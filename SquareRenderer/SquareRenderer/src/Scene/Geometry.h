@@ -1,10 +1,11 @@
 #pragma once
 
 #include "Common/Macros.h"
+#include "Common/Math3D.h"
+
 #include "API/SharedResource.h"
 #include "Renderer/IGeometry.h"
 
-#include <glm/glm.hpp>
 #include <vector>
 
 struct Vertex

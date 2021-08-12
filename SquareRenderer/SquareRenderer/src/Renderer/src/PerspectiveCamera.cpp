@@ -1,6 +1,6 @@
 #include "Renderer/PerspectiveCamera.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "Common/Math3D.h"
 
 PerspectiveCamera::PerspectiveCamera(
 	int width, int height, float fov, float near, float far)

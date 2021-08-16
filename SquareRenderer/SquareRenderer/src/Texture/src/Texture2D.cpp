@@ -29,7 +29,7 @@ void Texture2D::resize(int width, int height)
 	{
 		bind();
 
-		m_linkedResource->update(m_width, m_height, nullptr, false);
+		m_linkedResource->update(m_width, m_height, nullptr);
 
 		unbind();
 	}
@@ -63,6 +63,27 @@ TextureFormat Texture2D::format() const
 const TextureSampler& Texture2D::sampler() const
 {
 	return m_sampler;
+}
+
+void Texture2D::updateMipmaps()
+{
+	if (!m_linkedResource)
+	{
+		return;
+	}
+
+	bool wasBound = m_isBound;
+	if (!m_isBound)
+	{
+		bind();
+	}
+
+	m_linkedResource->generateMipmaps();
+
+	if (!wasBound)
+	{
+		unbind();
+	}
 }
 
 void Texture2D::link(ITextureResourceUPtr resource)

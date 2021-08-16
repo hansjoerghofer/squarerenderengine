@@ -2,20 +2,22 @@
 
 #include "Texture/ITexture.h"
 
-#include <vector>
+#include "Common/Macros.h"
 
-DECLARE_PTRS(Texture2D);
+DECLARE_PTRS(Cubemap);
 
-class Texture2D : public ITexture
+class Cubemap : public ITexture
 {
 public:
 
-	Texture2D(int width, int height, TextureFormat format, 
+	Cubemap(int width, TextureFormat format,
 		TextureSampler sampler = TextureSampler());
-	
-	virtual ~Texture2D();
 
-	void resize(int width, int height);
+	virtual ~Cubemap();
+
+	TextureFormat format() const;
+
+	const TextureSampler& sampler() const;
 
 	virtual TextureLayout layout() const override;
 
@@ -29,21 +31,15 @@ public:
 
 	virtual void unbind() override;
 
+	virtual void updateMipmaps();
+
 	virtual SharedResource::Handle handle() const override;
-
-	virtual TextureFormat format() const;
-
-	const TextureSampler& sampler() const;
-
-	void updateMipmaps();
 
 	void link(ITextureResourceUPtr resource);
 
-private:
+protected:
 
 	int m_width;
-
-	int m_height;
 
 	bool m_isBound;
 

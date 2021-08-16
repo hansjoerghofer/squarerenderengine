@@ -36,10 +36,7 @@ public:
 
     virtual void update(double deltaTime);
 
-    virtual void preRender();
-
 
 protected:
     RenderCommand m_command;
 };
-

@@ -28,6 +28,16 @@ void Scene::addLight(ILightsourceSPtr light)
 	m_lights.push_back(light);
 }
 
+void Scene::setSkybox(CubemapSPtr cubemap)
+{
+	m_skybox = cubemap;
+}
+
+CubemapSPtr Scene::skybox() const
+{
+	return m_skybox;
+}
+
 unsigned int Scene::nodeNum() const
 {
 	return m_root->count();

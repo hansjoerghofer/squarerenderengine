@@ -10,6 +10,9 @@
 #include <string>
 #include <stdexcept>
 
+#pragma warning( push )
+#pragma warning( disable : 4840 )
+
 /* source: 
  * https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
  */
@@ -23,6 +26,8 @@ std::string string_format(const std::string& format, Args ... args)
 	std::snprintf(buf.get(), size, format.c_str(), args ...);
 	return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
+
+#pragma warning( pop )
 
 enum class LogSeverity : char
 {

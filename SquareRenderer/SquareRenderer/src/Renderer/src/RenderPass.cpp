@@ -51,7 +51,3 @@ const std::vector<IDrawableSPtr>& RenderPass::drawables() const
 void RenderPass::update(double /*deltaTime*/)
 {
 }
-
-void RenderPass::preRender()
-{
-}

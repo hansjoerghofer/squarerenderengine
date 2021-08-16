@@ -59,7 +59,9 @@ class ITextureResource : public IBindableResource
 public:
 
 	virtual void update(int width, int height, 
-		const void* data, bool mipmapping) = 0;
+		const void* data) = 0;
+
+	virtual void generateMipmaps() = 0;
 
 };
 

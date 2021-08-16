@@ -13,6 +13,8 @@
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
 #include "Scene/Geometry.h"
+#include "Scene/CubeGeometry.h"
+#include "Scene/SkyboxGeometry.h"
 #include "Scene/Mesh.h"
 #include "Scene/LineSet.h"
 #include "Scene/SceneNode.h"
@@ -29,6 +31,7 @@
 #include "Renderer/GizmoHelper.h"
 
 #include "Texture/Texture2D.h"
+#include "Texture/Cubemap.h"
 
 #include "UniformBlockDataStructs.h"
 
@@ -58,6 +61,23 @@ RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 		// bind uniform blocks to all programs who need it
 		program->bindUniformBlock("CameraUBO", m_cameraUniformBlock->bindingPoint());
 		program->bindUniformBlock("LightsUBO", m_lightsUniformBlock->bindingPoint());
+	}
+
+	if (!m_fullscreenTriangle)
+	{
+		GeometrySPtr fullscreenTriangle = MeshSPtr(new Mesh({
+			{{-1.f,-1.f, 0.f}},
+			{{ 3.f,-1.f, 0.f}},
+			{{-1.f, 3.f, 0.f}}
+			}, {}, false, false, false));
+
+		if (!m_api->allocate(fullscreenTriangle))
+		{
+			Logger::Warning("Error while allocating fullscreen triangle buffer.");
+			return;
+		}
+
+		m_fullscreenTriangle = fullscreenTriangle;
 	}
 }
 
@@ -90,22 +110,25 @@ void RenderEngine::render()
 {
 	for (const auto& pass : m_renderPassList)
 	{
-		m_renderer->setTarget(pass->target());
+		render(*pass);
+	}
+}
 
-		m_renderer->applyState(pass->rendererState());
+void RenderEngine::render(const RenderPass& pass)
+{
+	m_renderer->setTarget(pass.target());
 
-		pass->preRender();
+	m_renderer->applyState(pass.rendererState());
 
-		for (const auto& elem : pass->drawables())
+	for (const auto& elem : pass.drawables())
+	{
+		// TODO override logic!
+		MaterialSPtr mat = pass.material() ? pass.material() : elem->material();
+		if (mat)
 		{
-			// TODO override logic!
-			MaterialSPtr mat = pass->material() ? pass->material() : elem->material();
-			if (mat)
-			{
-				elem->preRender(mat);
-				m_renderer->render(elem->geometry(), mat);
-				elem->postRender();
-			}
+			elem->preRender(mat);
+			m_renderer->render(elem->geometry(), mat);
+			elem->postRender();
 		}
 	}
 }
@@ -201,14 +224,42 @@ void RenderEngine::rebuildCommandList()
 					1.f / shadowData.data->height()
 				);
 				program->setUniformDefault("_shadowMapDim", shadowDim);
+				// TODO create indexed setter
 				program->setUniformDefault(
 					"_shadowMaps[" + std::to_string(shadowData.index) + "]",
 					shadowData.data);
 			}
 		}
 
+		// opaque scene rendering
 		m_renderPassList.emplace_back(
 			new RenderPass(std::move(cmd)));
+
+		// skybox rendering
+		MaterialSPtr skyboxMat = m_matlib->instanciate("Util.Skybox");
+		if (skyboxMat && m_scene->skybox())
+		{
+			skyboxMat->setUniform("skybox", m_scene->skybox());
+
+			RenderCommand cmd2;
+			cmd2.name = "Skybox";
+			cmd2.target = m_gBuffer;
+			cmd2.state.clearColor = false;
+			cmd2.state.clearDepth = false;
+			cmd2.state.clearStencil = false;
+			cmd2.state.writeDepth = false;
+			cmd2.state.cullingMode = Culling::None;
+			cmd2.state.depthTestMode = DepthTest::LessEqual;
+
+			GeometrySPtr geometry = SkyboxGeometry::create();
+			if (m_api->allocate(geometry))
+			{
+				cmd2.drawables.emplace_back(new Primitive(geometry, skyboxMat));
+
+				m_renderPassList.emplace_back(
+					new RenderPass(std::move(cmd2)));
+			}			
+		}
 	}
 
 	setupPostProcessing();
@@ -292,23 +343,6 @@ void RenderEngine::setupPostProcessing()
 	if (!m_gBuffer)
 	{
 		return;
-	}
-
-	if (!m_fullscreenTriangle)
-	{
-		GeometrySPtr fullscreenTriangle = MeshSPtr(new Mesh({
-			{{-1.f,-1.f, 0.f}},
-			{{ 3.f,-1.f, 0.f}},
-			{{-1.f, 3.f, 0.f}}
-			}, {}, false, false, false));
-
-		if (!m_api->allocate(fullscreenTriangle))
-		{
-			Logger::Warning("Error while allocating fullscreen triangle buffer.");
-			return;
-		}
-
-		m_fullscreenTriangle = fullscreenTriangle;
 	}
 
 	MaterialSPtr tonemappingMat = m_matlib->instanciate("PP.Tonemapping", "Tonemapping");
@@ -512,4 +546,67 @@ void RenderEngine::updateLightsUniformData()
 	}
 
 	m_lightsUniformBlock->update(data);
+}
+
+void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, CubemapSPtr target)
+{
+	if (source->width() != source->height() * 2)
+	{
+		throw std::invalid_argument("Invalid texture dimension for LongLat map.");
+	}
+
+	RenderTargetSPtr rt = std::make_shared<RenderTarget>(target);
+	m_api->allocate(rt);
+	if (!m_api->allocate(rt))
+	{
+		return;
+	}
+
+	GeometrySPtr cubeGeom = CubeGeometry::create();
+	if (!m_api->allocate(cubeGeom))
+	{
+		Logger::Warning("Error while allocating cube geometry.");
+		return;
+	}
+
+	MaterialSPtr projectionMat = m_matlib->instanciate("Util.ProjectEqr2Cube", "ProjecEqr2Cube");
+	if (!projectionMat)
+	{
+		return;
+	}
+
+	const int rotXDeg = 0;
+	projectionMat->setUniform("horizontalRotation", (rotXDeg % 360) / 360.f);
+	projectionMat->setUniform("equirectangularMap", source);
+
+	// TODO defaults, store somewhere else
+	const glm::mat4 proj = glm::perspective(glm::radians(90.f), 1.f, .1f, 10.f);
+	const glm::mat4 views[6] = {
+		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 1, 0, 0), glm::vec3( 0,-1, 0)),
+		glm::lookAt(glm::vec3(0,0,0), glm::vec3(-1, 0, 0), glm::vec3( 0,-1, 0)),
+		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 1, 0), glm::vec3( 0, 0, 1)),
+		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0,-1, 0), glm::vec3( 0, 0,-1)),
+		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0, 1), glm::vec3( 0,-1, 0)),
+		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0,-1), glm::vec3( 0,-1, 0))
+	};
+
+	for (int i = 0; i < 6; ++i)
+	{
+		projectionMat->setUniform("VP[" + std::to_string(i) + "]", proj * views[i]);
+	}
+
+	RenderCommand cmd;
+	cmd.name = "EquirectangularToCubemap";
+	cmd.target = rt;
+	cmd.drawables.emplace_back(new Primitive(cubeGeom, projectionMat));
+
+	cmd.state.clearColor = true;
+	cmd.state.color = glm::vec4(0, 0, 0, 1);
+	cmd.state.cullingMode = Culling::Front;
+	cmd.state.depthTestMode = DepthTest::Equal;
+	cmd.state.writeDepth = false;
+
+	render(RenderPass(std::move(cmd)));
+
+	target->updateMipmaps();
 }

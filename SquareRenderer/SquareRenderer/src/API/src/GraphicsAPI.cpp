@@ -6,6 +6,7 @@
 #include "Material/ShaderSource.h"
 #include "Material/ShaderProgram.h"
 #include "Texture/Texture2D.h"
+#include "Texture/Cubemap.h"
 #include "Renderer/RenderTarget.h"
 #include "Renderer/DepthBuffer.h"
 #include "Renderer/UniformBlockData.h"
@@ -42,7 +43,7 @@ static const std::unordered_map<TextureFormat, GLTextureFormat> s_texFormatToGL 
     { TextureFormat::RGBA,          { GL_RGBA8,         GL_RGBA,    GL_UNSIGNED_BYTE,   CHAR_SIZE * 4 } },
     { TextureFormat::RGBAHalf,      { GL_RGBA16F,       GL_RGBA,    GL_FLOAT,           HALF_SIZE * 4 } },
     { TextureFormat::RGBAFloat,     { GL_RGBA32F,       GL_RGBA,    GL_FLOAT,           FLOAT_SIZE * 4 } },
-    { TextureFormat::SRGB,          { GL_SRGB8,         GL_RGBA,    GL_UNSIGNED_BYTE,   CHAR_SIZE * 3 } },
+    { TextureFormat::SRGB,          { GL_SRGB8,         GL_RGB,     GL_UNSIGNED_BYTE,   CHAR_SIZE * 3 } },
     { TextureFormat::SRGBA,         { GL_SRGB8_ALPHA8,  GL_RGBA,    GL_UNSIGNED_BYTE,   CHAR_SIZE * 4 } },
     { TextureFormat::DepthHalf,     { GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT, FLOAT_SIZE } },
     { TextureFormat::ShadowMapHalf, { GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT, FLOAT_SIZE } },
@@ -513,8 +514,12 @@ public:
                 glm::value_ptr(texture->sampler().borderColor));
         }
 
-        update(texture->width(), texture->height(), 
-            data, texture->sampler().mipmapping);
+        update(texture->width(), texture->height(), data);
+
+        if (texture->sampler().mipmapping)
+        {
+            generateMipmaps();
+        }
 
         if (GraphicsAPICheckError())
         {
@@ -538,18 +543,18 @@ public:
         }
     }
 
-    void update(int width, int height, const void* data, bool mipmapping) override
+    void update(int width, int height, const void* data) override
     {
         // TODO use glTexSubImage2D if dimensions stay the same and only data changes
 
         glTexImage2D(GL_TEXTURE_2D, 0, m_format.internalFormat,
             width, height, 0, m_format.dataFormat, m_format.dataType, 
             data);
+    }
 
-        if (mipmapping)
-        {
-            glGenerateMipmap(GL_TEXTURE_2D);
-        }
+    void generateMipmaps() override
+    {
+        glGenerateMipmap(GL_TEXTURE_2D);
     }
 
     void bind() override
@@ -563,6 +568,147 @@ public:
     }
 
 private:
+
+    GLTextureFormat m_format;
+
+};
+
+class GLCubemapResource : public ITextureResource
+{
+public:
+    GLCubemapResource(CubemapSPtr texture, const void* data = nullptr)
+    {
+        const auto& found = s_texFormatToGL.find(texture->format());
+        if (found == s_texFormatToGL.end())
+        {
+            return;
+        }
+        m_format = found->second;
+
+        GLuint textureWrap;
+        switch (texture->sampler().wrap)
+        {
+        case TextureWrap::Mirror:
+            textureWrap = GL_MIRRORED_REPEAT;
+            break;
+        case TextureWrap::ClampToBorder:
+            textureWrap = GL_CLAMP_TO_BORDER;
+            break;
+        case TextureWrap::ClampToEdge:
+            textureWrap = GL_CLAMP_TO_EDGE;
+            break;
+        case TextureWrap::Repeat:
+        default:
+            textureWrap = GL_REPEAT;
+            break;
+        }
+
+        GLuint textureMinFilter;
+        GLuint textureMaxFilter;
+        switch (texture->sampler().filter)
+        {
+        case TextureFilter::Nearest:
+            textureMinFilter = GL_NEAREST_MIPMAP_NEAREST;
+            textureMaxFilter = GL_NEAREST;
+            break;
+        case TextureFilter::Linear:
+        default:
+            textureMinFilter = GL_LINEAR_MIPMAP_LINEAR;
+            textureMaxFilter = GL_LINEAR;
+            break;
+        }
+
+        if (!texture->sampler().mipmapping)
+        {
+            textureMinFilter = textureMaxFilter;
+        }
+
+        unsigned int handle;
+        glGenTextures(1, &handle);
+        glBindTexture(TARGET_TYPE, handle);
+
+        glTexParameteri(TARGET_TYPE, GL_TEXTURE_WRAP_S, textureWrap);
+        glTexParameteri(TARGET_TYPE, GL_TEXTURE_WRAP_T, textureWrap);
+        //if (TARGET_TYPE == GL_TEXTURE_CUBE_MAP)
+        {
+            glTexParameteri(TARGET_TYPE, GL_TEXTURE_WRAP_R, textureWrap);
+        }
+        glTexParameteri(TARGET_TYPE, GL_TEXTURE_MIN_FILTER, textureMinFilter);
+        glTexParameteri(TARGET_TYPE, GL_TEXTURE_MAG_FILTER, textureMaxFilter);
+
+        // Enable hardware shadow anti aliasing
+        if (texture->format() == TextureFormat::ShadowMapHalf ||
+            texture->format() == TextureFormat::ShadowMapFloat)
+        {
+            glTexParameteri(TARGET_TYPE, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+        }
+
+        if (texture->sampler().wrap == TextureWrap::ClampToBorder)
+        {
+            glTexParameterfv(TARGET_TYPE, GL_TEXTURE_BORDER_COLOR,
+                glm::value_ptr(texture->sampler().borderColor));
+        }
+
+        update(texture->width(), texture->height(), data);
+
+        if (texture->sampler().mipmapping)
+        {
+            generateMipmaps();
+        }
+
+        if (GraphicsAPICheckError())
+        {
+            m_handle = static_cast<SharedResource::Handle>(handle);
+        }
+        else
+        {
+            glDeleteTextures(1, &handle);
+        }
+
+        glBindTexture(TARGET_TYPE, 0);
+    }
+
+    ~GLCubemapResource()
+    {
+        if (isValid())
+        {
+            const GLuint handle = static_cast<GLuint>(m_handle);
+            glDeleteTextures(1, &handle);
+            m_handle = INVALID_HANDLE;
+        }
+    }
+
+    void update(int width, int height, const void* data) override
+    {
+        // TODO use glTexSubImage2D if dimensions stay the same and only data changes
+
+        // upload cubemap texture data
+        for (int side = 0; side < 6; ++side)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, 
+                0, m_format.internalFormat, width, height, 0, 
+                m_format.dataFormat, m_format.dataType, data);
+        }
+    }
+
+    void generateMipmaps() override
+    {
+        glGenerateMipmap(TARGET_TYPE);
+    }
+
+    void bind() override
+    {
+        glBindTexture(TARGET_TYPE, m_handle);
+    }
+
+    void unbind() override
+    {
+        glBindTexture(TARGET_TYPE, 0);
+    }
+
+private:
+
+    static const GLenum TARGET_TYPE = GL_TEXTURE_CUBE_MAP;
 
     GLTextureFormat m_format;
 
@@ -587,11 +733,11 @@ public:
                     attachement, GL_TEXTURE_2D,
                     att->handle(), 0);
                 break;
-            /*case TextureLayout::Cubemap:
+            case TextureLayout::Cubemap:
                 glFramebufferTexture(GL_FRAMEBUFFER,
                     attachement, att->handle(),
                     0);
-                break;*/
+                break;
             }
 
             ++attachement;
@@ -771,8 +917,28 @@ bool GraphicsAPI::allocate(ITextureSPtr texture, const void* data)
             return true;
         }        
     }
+    else if (texture->layout() == TextureLayout::Cubemap)
+    {
+        CubemapSPtr cubemap = std::static_pointer_cast<Cubemap>(texture);
 
-    // TODO other texture layouts
+        const auto& found = s_texFormatToGL.find(cubemap->format());
+        if (found == s_texFormatToGL.end())
+        {
+            return false;
+        }
+
+        Logger::Info("Allocate cubemap texture (w:%i): %.3fKB",
+            cubemap->width(),
+            (static_cast<size_t>(cubemap->width() * cubemap->width()) * found->second.internalBPC) / 1024.f);
+
+        ITextureResourceUPtr resource(new GLCubemapResource(cubemap, data));
+
+        if (resource && resource->isValid())
+        {
+            cubemap->link(std::move(resource));
+            return true;
+        }
+    }
 
     Logger::Error("Could not allocate Texture.");
 

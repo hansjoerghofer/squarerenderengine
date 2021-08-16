@@ -2,3 +2,5 @@ Lit.BlinnPhong  Lit/BlinnPhong.vert Lit/BlinnPhong.frag
 Debug.Line  Line.vert Line.frag
 PP.Tonemapping  PostProcessing/Fullscreen.vert  PostProcessing/Tonemapping.frag
 Util.ShadowMapping	Util/ShadowMapping.vert	Util/ShadowMapping.frag
+Util.ProjectEqr2Cube	Util/Default.vert	Util/Cubemap.geom	Util/Eqr2Cube.frag
+Util.Skybox	Util/Skybox.vert	Util/Skybox.frag

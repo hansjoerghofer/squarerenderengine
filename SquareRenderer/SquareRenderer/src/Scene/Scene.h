@@ -8,6 +8,7 @@
 DECLARE_PTRS(SceneNode);
 DECLARE_PTRS(Scene);
 DECLARE_PTRS(ILightsource);
+DECLARE_PTRS(Cubemap);
 class BoundingBox;
 
 class Scene
@@ -24,6 +25,10 @@ public:
     const std::vector<ILightsourceSPtr>& lights() const;
 
     void addLight(ILightsourceSPtr light);
+
+    void setSkybox(CubemapSPtr cubemap);
+
+    CubemapSPtr skybox() const;
 
     unsigned int nodeNum() const;
 
@@ -47,6 +52,8 @@ public:
 protected:
 
 	SceneNodeSPtr m_root;
+
+    CubemapSPtr m_skybox;
 
     std::vector<ILightsourceSPtr> m_lights;
 };

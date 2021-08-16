@@ -122,23 +122,27 @@ void Renderer::applyState(const RendererState& state, bool force)
 {
     if (force || state.enableWireframe != m_currentState.enableWireframe)
     {
+        m_currentState.enableWireframe = state.enableWireframe;
         glPolygonMode(GL_FRONT_AND_BACK, state.enableWireframe ? GL_LINE : GL_FILL);
     }
 
     if (force || state.writeColor != m_currentState.writeColor)
     {
+        m_currentState.writeColor = state.writeColor;
         const GLboolean flag = translate(state.writeColor);
         glColorMask(flag, flag, flag, flag);
     }
 
     if (force || state.writeDepth != m_currentState.writeDepth)
     {
+        m_currentState.writeDepth = state.writeDepth;
         const GLboolean flag = translate(state.writeDepth);
         glDepthMask(flag);
     }
 
     if (force || (state.clearColor && state.color != m_currentState.color))
     {
+        m_currentState.color = state.color;
         glClearColor(
             state.color.r,
             state.color.g,
@@ -148,6 +152,7 @@ void Renderer::applyState(const RendererState& state, bool force)
 
     if (force || (state.clearDepth && state.depth != m_currentState.depth))
     {
+        m_currentState.depth = state.depth;
         glClearDepth(state.depth);
     }
 
@@ -155,6 +160,9 @@ void Renderer::applyState(const RendererState& state, bool force)
         || state.blendSrc != m_currentState.blendSrc 
         || state.blendDst != m_currentState.blendDst)
     {
+        m_currentState.blendSrc = state.blendSrc;
+        m_currentState.blendDst = state.blendDst;
+
         if (state.blendSrc != BlendFactor::None &&
             state.blendDst != BlendFactor::None)
         {
@@ -172,6 +180,8 @@ void Renderer::applyState(const RendererState& state, bool force)
 
     if (force || state.depthOffset != m_currentState.depthOffset)
     {
+        m_currentState.depthOffset = state.depthOffset;
+
         if (state.depthOffset.length() > 0)
         {
             glPolygonOffset(
@@ -192,8 +202,14 @@ void Renderer::applyState(const RendererState& state, bool force)
     clearBits |= state.clearStencil ? GL_STENCIL_BUFFER_BIT : 0;
     glClear(clearBits);
 
+    m_currentState.clearColor = state.clearColor;
+    m_currentState.clearDepth = state.clearDepth;
+    m_currentState.clearStencil = state.clearStencil;
+
     if (force || state.depthTestMode != m_currentState.depthTestMode)
     {
+        m_currentState.depthTestMode = state.depthTestMode;
+
         if (state.depthTestMode != DepthTest::None)
         {
             const GLenum depthFunc = translate(state.depthTestMode);
@@ -209,6 +225,8 @@ void Renderer::applyState(const RendererState& state, bool force)
 
     if (force || state.cullingMode != m_currentState.cullingMode)
     {
+        m_currentState.cullingMode = state.cullingMode;
+
         if (state.cullingMode != Culling::None)
         {
             const GLenum mode = translate(state.cullingMode);
@@ -224,13 +242,19 @@ void Renderer::applyState(const RendererState& state, bool force)
 
     if (force || state.seamlessCubemapFiltering != m_currentState.seamlessCubemapFiltering)
     {
+        m_currentState.seamlessCubemapFiltering = state.seamlessCubemapFiltering;
+
         if (state.seamlessCubemapFiltering)
         {
             glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
         }
+        else
+        {
+            glDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+        }
     }
 
-    m_currentState = state;
+    m_currentState.primitive = state.primitive;
 
     GraphicsAPICheckError();
 }

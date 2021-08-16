@@ -26,6 +26,7 @@
 #include "Scene/PointLight.h"
 
 #include "Texture/Texture2D.h"
+#include "Texture/Cubemap.h"
 
 #include "Renderer/RenderEngine.h"
 #include "Renderer/PerspectiveCamera.h"
@@ -57,10 +58,12 @@ int main()
     }
 
     Texture2DSPtr uvTexture;
+    Texture2DSPtr skyTexture;
     {
         ScopedTimerLog t("Texture import");
         TextureImporter ti(api);
         uvTexture = ti.importFromFile("Resources/Textures/uvgrid.png");
+        skyTexture = ti.importFromFile("Resources/Textures/eqr.jpg");
     }
 
     SceneSPtr scene;
@@ -84,8 +87,12 @@ int main()
     mainWindow->inputHandler()->enableCameraNavigation(camera, 1000, 10);
 
     RenderEngineSPtr renderEngine = std::make_shared<RenderEngine>(api, matLib);
-    
     //renderEngine->setRenderingScale(1.0 / mainWindow->dpiScaling());
+
+    TextureSampler skySampler = { TextureFilter::Linear, TextureWrap::ClampToEdge, true, glm::vec4(0,0,0,0) };
+    CubemapSPtr skyMap = std::make_shared<Cubemap>(skyTexture->height() / 2, TextureFormat::SRGB, skySampler);
+    renderEngine->projectEquirectangularToCubemap(skyTexture, skyMap);
+    scene->setSkybox(skyMap);
 
     renderEngine->setScene(scene);
     renderEngine->setMainCamera(camera);

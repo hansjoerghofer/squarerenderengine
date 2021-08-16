@@ -17,6 +17,8 @@ DECLARE_PTRS(IRenderTarget);
 DECLARE_PTRS(RenderTarget);
 DECLARE_PTRS(IDrawable);
 DECLARE_PTRS(RenderPass);
+DECLARE_PTRS(Texture2D);
+DECLARE_PTRS(Cubemap);
 
 template<typename T>
 class UniformBlockData;
@@ -57,8 +59,14 @@ public:
 	void update(double deltaTime);
 
 	void render();
+
+	/* Helper Functions */
+
+	void projectEquirectangularToCubemap(Texture2DSPtr source, CubemapSPtr target);
 	
 protected:
+
+	void render(const RenderPass&);
 
 	void setupPostProcessing();
 

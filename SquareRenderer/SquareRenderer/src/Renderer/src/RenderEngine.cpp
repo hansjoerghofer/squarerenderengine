@@ -12,14 +12,12 @@
 
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
-#include "Scene/Geometry.h"
-#include "Scene/CubeGeometry.h"
-#include "Scene/SkyboxGeometry.h"
 #include "Scene/Mesh.h"
-#include "Scene/LineSet.h"
+#include "Scene/PrimitiveSet.h"
 #include "Scene/SceneNode.h"
 #include "Scene/DirectionalLight.h"
 #include "Scene/PointLight.h"
+#include "Scene/MeshBuilder.h"
 
 #include "Material/Material.h"
 #include "Material/MaterialLibrary.h"
@@ -65,12 +63,7 @@ RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 
 	if (!m_fullscreenTriangle)
 	{
-		GeometrySPtr fullscreenTriangle = MeshSPtr(new Mesh({
-			{{-1.f,-1.f, 0.f}},
-			{{ 3.f,-1.f, 0.f}},
-			{{-1.f, 3.f, 0.f}}
-			}, {}, false, false, false));
-
+		IGeometrySPtr fullscreenTriangle = MeshBuilder::screenTriangle();
 		if (!m_api->allocate(fullscreenTriangle))
 		{
 			Logger::Warning("Error while allocating fullscreen triangle buffer.");
@@ -251,7 +244,7 @@ void RenderEngine::rebuildCommandList()
 			cmd2.state.cullingMode = Culling::None;
 			cmd2.state.depthTestMode = DepthTest::LessEqual;
 
-			GeometrySPtr geometry = SkyboxGeometry::create();
+			IGeometrySPtr geometry = MeshBuilder::skybox();
 			if (m_api->allocate(geometry))
 			{
 				cmd2.drawables.emplace_back(new Primitive(geometry, skyboxMat));
@@ -326,7 +319,11 @@ void RenderEngine::setupGizmos(const std::string& programName)
 		lines.insert(lines.end(), aabbGizmo.begin(), aabbGizmo.end());
 	}
 
-	GeometrySPtr gizmoGeometry = LineSetSPtr(new LineSet(lines));
+	std::vector<Vertex> vertices = GizmoHelper::linesToPrimitives(lines);
+
+	IGeometrySPtr gizmoGeometry = std::make_shared<PrimitiveSet>(
+		PrimitiveType::Lines, std::move(vertices), false, true);
+
 	if (!m_api->allocate(gizmoGeometry))
 	{
 		Logger::Warning("Error while allocating gizmo geometry buffers.");
@@ -562,7 +559,7 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 		return;
 	}
 
-	GeometrySPtr cubeGeom = CubeGeometry::create();
+	IGeometrySPtr cubeGeom = MeshBuilder::cube();
 	if (!m_api->allocate(cubeGeom))
 	{
 		Logger::Warning("Error while allocating cube geometry.");
@@ -608,5 +605,5 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 
 	render(RenderPass(std::move(cmd)));
 
-	target->updateMipmaps();
+	m_renderer->regenerateMipmaps(target);
 }

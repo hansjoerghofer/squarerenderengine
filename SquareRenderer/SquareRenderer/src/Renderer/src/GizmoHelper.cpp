@@ -1,7 +1,7 @@
 #include "Common/Math3D.h"
 
 #include "Renderer/GizmoHelper.h"
-#include "Scene/LineSet.h"
+#include "Scene/IGeometry.h"
 #include "Scene/BoundingBox.h"
 #include "Scene/ILightsource.h"
 #include "Scene/DirectionalLight.h"
@@ -82,4 +82,16 @@ std::vector<LineSegment> GizmoHelper::createBoundingBox(const BoundingBox& box)
 		{ v100, v110, boxColor },
 		{ v010, v011, boxColor },
 	};
+}
+
+std::vector<Vertex> GizmoHelper::linesToPrimitives(const std::vector<LineSegment>& lines)
+{
+	std::vector<Vertex> vertices;
+	vertices.reserve(lines.size() * 2);
+	for (const LineSegment& line : lines)
+	{
+		vertices.push_back({ line.start, {0,0}, line.color, {0,0,0} });
+		vertices.push_back({ line.end, {0,0}, line.color, {0,0,0} });
+	}
+	return vertices;
 }

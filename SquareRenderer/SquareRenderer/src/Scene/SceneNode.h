@@ -10,7 +10,7 @@
 #include <list>
 
 DECLARE_PTRS(SceneNode);
-DECLARE_PTRS(Geometry);
+DECLARE_PTRS(IGeometry);
 
 class SceneNode : public IDrawable
 {
@@ -40,7 +40,7 @@ public:
 
 	virtual MaterialSPtr material() const override;
 
-	void setGeometry(GeometrySPtr geometry);
+	void setGeometry(IGeometrySPtr geometry);
 
 	virtual IGeometrySPtr geometry() const override;
 
@@ -61,7 +61,7 @@ private:
 
 	MaterialSPtr m_material;
 
-	GeometrySPtr m_geometry;
+	IGeometrySPtr m_geometry;
 
 	SceneNodeWPtr m_parent;
 

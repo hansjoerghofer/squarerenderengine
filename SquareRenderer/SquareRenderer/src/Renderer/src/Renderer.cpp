@@ -1,10 +1,13 @@
 #include "API/GraphicsAPI.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/IRenderTarget.h"
-#include "Renderer/IGeometry.h"
+#include "Scene/IGeometry.h"
 #include "Material/Material.h"
 #include "Material/ShaderProgram.h"
 #include "Texture/ITexture.h"
+#include "Scene/IGeometryVisitor.h"
+#include "Scene/Mesh.h"
+#include "Scene/PrimitiveSet.h"
 
 inline GLenum translate(BlendFactor factor)
 {
@@ -62,12 +65,41 @@ inline GLenum translate(PrimitiveMode mode)
     }
 }
 
+inline GLenum translate(PrimitiveType type)
+{
+    switch (type)
+    {
+    case PrimitiveType::Points:     return GL_POINTS;
+    case PrimitiveType::Lines:      return GL_LINES;
+    case PrimitiveType::Triangles:
+    default:                        return GL_TRIANGLES;
+    }
+}
+
 inline GLboolean translate(bool flag)
 {
     return flag ? GL_TRUE : GL_FALSE;
 }
 
+class RenderVisitor : public IGeometryVisitor
+{
+public:
+    virtual void visit(Mesh& mesh) override
+    {
+        const GLsizei indexCount = static_cast<GLsizei>(mesh.indexCount());
+        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+    }
+
+    virtual void visit(PrimitiveSet& primitiveSet) override
+    {
+        const GLenum type = translate(primitiveSet.type());
+        const GLsizei vertexCount = static_cast<GLsizei>(primitiveSet.vertexCount());
+        glDrawArrays(type, 0, vertexCount);
+    }
+};
+
 Renderer::Renderer()
+    : m_geometryPainter(new RenderVisitor())
 {
     // initalize renderer state
     applyState(RendererState(), true);
@@ -79,17 +111,7 @@ void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
     bindTextures(mat);
     geo->bind();
 
-    GLenum primitiveMode = translate(m_currentState.primitive);
-    if (geo->indexCount() > 0)
-    {
-        const GLsizei indexCount = static_cast<GLsizei>(geo->indexCount());
-        glDrawElements(primitiveMode, indexCount, GL_UNSIGNED_INT, 0);
-    }
-    else
-    {
-        const GLsizei vertexCount = static_cast<GLsizei>(geo->vertexCount());
-        glDrawArrays(primitiveMode, 0, vertexCount);
-    }
+    geo->accept(*m_geometryPainter);
 
     geo->unbind();
     unbindTextures();
@@ -259,6 +281,23 @@ void Renderer::applyState(const RendererState& state, bool force)
     GraphicsAPICheckError();
 }
 
+void Renderer::regenerateMipmaps(ITextureSPtr tex)
+{
+    switch (tex->layout())
+    {
+    case TextureLayout::Texture2D:
+        glBindTexture(GL_TEXTURE_2D, tex->handle());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        break;
+    case TextureLayout::Cubemap:
+        glBindTexture(GL_TEXTURE_CUBE_MAP, tex->handle());
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        break;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Renderer::bindTextures(MaterialSPtr mat)
 {
     auto textures = mat->uniformTextures();
@@ -271,9 +310,22 @@ void Renderer::bindTextures(MaterialSPtr mat)
     int activeTextureUnit = 0;
     for (const auto& [name, texture] : textures)
     {
+        GLenum target;
+        switch (texture->layout())
+        {
+        case TextureLayout::Texture2D:
+            target = GL_TEXTURE_2D;
+            break;
+        case TextureLayout::Cubemap:
+            target = GL_TEXTURE_CUBE_MAP;
+            break;
+        default:
+            throw std::exception("Try to bind unsupported texture layout.");
+        }
+
         mat->setUniform(name, activeTextureUnit);
         glActiveTexture(GL_TEXTURE0 + activeTextureUnit);
-        texture->bind();
+        glBindTexture(target, texture->handle());
 
         m_boundTextures.push_back(texture);
 
@@ -283,11 +335,11 @@ void Renderer::bindTextures(MaterialSPtr mat)
 
 void Renderer::unbindTextures()
 {
-    GLenum activeTexture = GL_TEXTURE0;
-    for (auto texture : m_boundTextures)
+    GLenum activeTextureUnit = GL_TEXTURE0;
+    for (const auto& texture : m_boundTextures)
     {
-        glActiveTexture(activeTexture++);
-        texture->unbind();
+        glActiveTexture(activeTextureUnit++);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     m_boundTextures.clear();

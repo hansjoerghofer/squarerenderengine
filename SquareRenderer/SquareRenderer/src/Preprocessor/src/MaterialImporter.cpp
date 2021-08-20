@@ -40,9 +40,7 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
 
     MaterialLibraryUPtr matLib = MaterialLibrary::create();
 
-
     // create default textures
-
     Texture2DSPtr defaultWhiteTex =
         std::make_shared<Texture2D>(1, 1, TextureFormat::RGBA);
     const glm::i8vec4 defaultWhiteVal(255, 255, 255, 255);
@@ -67,7 +65,6 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
         matLib->registerDefaultTexture("normal", defaultNormalTex);
     }
 
-
     std::string root = path.parent_path().string() + "/";
 
     std::string line;
@@ -89,17 +86,33 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
         }
 
         ShaderProgramSPtr program = loadProgramFromFiles(programName, shaderPaths);
-        if (program)
+        if (!program)
         {
-            matLib->registerProgram(program);
+            continue;
+        }
 
-            // set default textures
-            for (const auto& [uniformName, metaInfo] : program->uniformMetaInfo())
+        matLib->registerProgram(program);
+
+        // set defaults from shader meta information
+        for (const auto& [uniformName, metaInfo] : program->uniformMetaInfo())
+        {
+            switch (metaInfo.type)
             {
-                if (metaInfo.type == UniformType::Texture2D)
+            case UniformType::Float:
+            case UniformType::Int:
+            case UniformType::Vec4:
+            case UniformType::Mat4:
+                program->setUniformDefault(uniformName, UniformValue(metaInfo.defaultValue));
+                break;
+            case UniformType::Texture2D:
+            case UniformType::Cubemap:
+            {
+                ITextureSPtr tex = matLib->findDefaultTexture(metaInfo.hint);
+                if (tex)
                 {
-                    program->setUniformDefault(uniformName, defaultWhiteTex);
+                    program->setUniformDefault(uniformName, tex);
                 }
+            }
             }
         }
     }

@@ -1,5 +1,5 @@
 #include "Scene/SceneNode.h"
-#include "Scene/Geometry.h"
+#include "Scene/IGeometry.h"
 #include "Material/Material.h"
 
 SceneNode::SceneNode(const std::string& name)
@@ -76,7 +76,7 @@ MaterialSPtr SceneNode::material() const
     return m_material;
 }
 
-void SceneNode::setGeometry(GeometrySPtr geometry)
+void SceneNode::setGeometry(IGeometrySPtr geometry)
 {
     m_geometry = geometry;
 }

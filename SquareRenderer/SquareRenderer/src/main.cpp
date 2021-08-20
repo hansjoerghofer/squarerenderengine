@@ -21,7 +21,6 @@
 
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
-#include "Scene/CubeGeometry.h"
 #include "Scene/DirectionalLight.h"
 #include "Scene/PointLight.h"
 
@@ -75,7 +74,8 @@ int main()
         scene = si.importFromFile("Resources/Scenes/primitives_more.fbx");
     }
 
-    DirectionalLightSPtr directionalLight = std::make_shared<DirectionalLight>(glm::vec3(1, -1, -0.5), glm::vec3(0.2, 0.7, 0.1));
+    DirectionalLightSPtr directionalLight = std::make_shared<DirectionalLight>(
+        glm::vec3(1, -1, -0.5));
     scene->addLight(directionalLight);
     //PointLightSPtr pointLight = std::make_shared<PointLight>(glm::vec3(.5, .5, .25), glm::vec3(0.2, 0.2, 0.7));
     //scene->addLight(pointLight);
@@ -107,7 +107,7 @@ int main()
     auto matfind = matLib->materials().find("Ground");
     if (matfind != matLib->materials().end())
     {
-        matfind->second->setUniform("albedo", uvTexture);
+        matfind->second->setUniform("albedoTexture", uvTexture);
     }
 
     Timer frameTimer;

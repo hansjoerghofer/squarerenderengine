@@ -22,12 +22,6 @@ const std::string& ShaderProgram::name() const
 void ShaderProgram::link(IShaderProgramResourceUPtr resource)
 {
 	m_linkedResource = std::move(resource);
-
-	// TODO use defaults from shader source (if given)!
-	for (const auto& [name, metaInfo] : m_nameToUniformMetaInfo)
-	{
-		setUniformDefault(name, UniformValue(metaInfo.defaultValue));
-	}
 }
 
 int ShaderProgram::id() const

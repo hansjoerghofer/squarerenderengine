@@ -14,6 +14,16 @@ void MaterialLibrary::registerDefaultTexture(const std::string& key, ITextureSPt
 	m_defaultTextures[key] = texture;
 }
 
+ITextureSPtr MaterialLibrary::findDefaultTexture(const std::string& key) const
+{
+	auto found = m_defaultTextures.find(key);
+	if (found != m_defaultTextures.end())
+	{
+		return found->second;
+	}
+	return nullptr;
+}
+
 ShaderProgramSPtr MaterialLibrary::findProgram(const std::string& name) const
 {
 	auto found = m_registeredPrograms.find(name);

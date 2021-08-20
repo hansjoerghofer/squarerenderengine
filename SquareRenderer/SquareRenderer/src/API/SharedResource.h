@@ -54,14 +54,12 @@ public:
 	virtual void unbind() = 0;
 };
 
-class ITextureResource : public IBindableResource
+class ITextureResource : public SharedResource
 {
 public:
 
 	virtual void update(int width, int height, 
 		const void* data) = 0;
-
-	virtual void generateMipmaps() = 0;
 
 };
 

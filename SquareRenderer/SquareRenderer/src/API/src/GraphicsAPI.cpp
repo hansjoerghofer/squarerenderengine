@@ -2,7 +2,10 @@
 
 #include "API/GraphicsAPI.h"
 #include "API/SharedResource.h"
-#include "Scene/Geometry.h"
+#include "Scene/IGeometry.h"
+#include "Scene/IGeometryVisitor.h"
+#include "Scene/Mesh.h"
+#include "Scene/PrimitiveSet.h"
 #include "Material/ShaderSource.h"
 #include "Material/ShaderProgram.h"
 #include "Texture/Texture2D.h"
@@ -24,6 +27,11 @@ struct GLTextureFormat
     GLint dataType = 0;
     size_t internalBPC = 0;
 };
+
+void glfwErrorHandler(int errorCode, const char* description)
+{
+    Logger::Error("GLFW Error %i: %s", errorCode, description);
+}
 
 constexpr size_t CHAR_SIZE = 1;
 constexpr size_t HALF_SIZE = 2;
@@ -51,10 +59,10 @@ static const std::unordered_map<TextureFormat, GLTextureFormat> s_texFormatToGL 
     { TextureFormat::ShadowMapFloat,{ GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT, FLOAT_SIZE } }
 };
 
-class GLVertexArray : public IGeometryResource
+class GLIndexedVertexArray : public IGeometryResource
 {
 public:
-    GLVertexArray(GeometrySPtr geometry)
+    GLIndexedVertexArray(const Mesh& mesh)
     {
         GLuint VAO, VBO, EBO;
 
@@ -64,19 +72,16 @@ public:
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER,
-            geometry->vertexBufferSize(),
-            geometry->vertices().data(),
-            geometry->isStatic() ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
+            mesh.vertexBufferSize(),
+            mesh.vertices().data(),
+            GL_STATIC_DRAW);
 
-        if (geometry->indexCount() > 0)
-        {
-            glGenBuffers(1, &EBO);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                geometry->indexBufferSize(),
-                geometry->indices().data(),
-                geometry->isStatic() ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
-        }
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+            mesh.indexBufferSize(),
+            mesh.indices().data(),
+            GL_DYNAMIC_DRAW);
 
         const GLsizei stride = sizeof(Vertex);
 
@@ -87,7 +92,7 @@ public:
             stride, (void*)offsetof(Vertex, position));
 
         int location = 1;
-        if (geometry->hasUVs())
+        if (mesh.hasUVs())
         {
             // vertex texture coords
             glEnableVertexAttribArray(location);
@@ -97,8 +102,8 @@ public:
 
             ++location;
         }
-        
-        if (geometry->hasNormals())
+
+        if (mesh.hasNormals())
         {
             // vertex normals
             glEnableVertexAttribArray(location);
@@ -109,7 +114,7 @@ public:
             ++location;
         }
 
-        if (geometry->hasTangents())
+        if (mesh.hasTangents())
         {
             // vertex tangents
             glEnableVertexAttribArray(location);
@@ -131,6 +136,16 @@ public:
         }
     }
 
+    virtual ~GLIndexedVertexArray()
+    {
+        if (isValid())
+        {
+            const GLuint handle = static_cast<GLuint>(m_handle);
+            glDeleteVertexArrays(1, &handle);
+            m_handle = INVALID_HANDLE;
+        }
+    }
+
     virtual void bind() override
     {
         if (isValid())
@@ -143,38 +158,85 @@ public:
     {
         glBindVertexArray(0);
     }
+};
 
-    virtual ~GLVertexArray()
+class GLPrimitiveArray : public IGeometryResource
+{
+public:
+    GLPrimitiveArray(const PrimitiveSet& primitiveSet)
+    {
+        GLuint VAO, VBO;
+
+        glGenVertexArrays(1, &VAO);
+
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER,
+            primitiveSet.vertexBufferSize(),
+            primitiveSet.vertices().data(),
+            primitiveSet.isStatic() ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
+
+        const GLsizei stride = sizeof(Vertex);
+
+        // vertex positions
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3,
+            GL_FLOAT, GL_FALSE,
+            stride, (void*)offsetof(Vertex, position));
+
+        int location = 1;
+        if (primitiveSet.hasUVs())
+        {
+            // vertex texture coords
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, 2,
+                GL_FLOAT, GL_FALSE,
+                stride, (void*)offsetof(Vertex, uv));
+
+            ++location;
+        }
+
+        if (primitiveSet.hasNormals())
+        {
+            // vertex normals
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, 3,
+                GL_FLOAT, GL_FALSE,
+                stride, (void*)offsetof(Vertex, normal));
+
+            ++location;
+        }
+
+        if (primitiveSet.hasTangents())
+        {
+            // vertex tangents
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, 3,
+                GL_FLOAT, GL_FALSE,
+                stride, (void*)offsetof(Vertex, tangent));
+
+            ++location;
+        }
+        glBindVertexArray(0);
+
+        if (GraphicsAPICheckError())
+        {
+            m_handle = static_cast<SharedResource::Handle>(VAO);
+        }
+        else
+        {
+            glDeleteVertexArrays(1, &VAO);
+        }
+    }
+
+    virtual ~GLPrimitiveArray()
     {
         if (isValid())
         {
             const GLuint handle = static_cast<GLuint>(m_handle);
             glDeleteVertexArrays(1, &handle);
             m_handle = INVALID_HANDLE;
-        }
-    }
-};
-
-class GLPositionBuffer : public IGeometryResource
-{
-    GLPositionBuffer(const std::vector<glm::vec3>& positions)
-    {
-        GLuint handle;
-
-        glGenBuffers(1, &handle);
-        glBindBuffer(GL_ARRAY_BUFFER, handle);
-        glBufferData(GL_ARRAY_BUFFER, 
-            sizeof(glm::vec3) * positions.size(),
-            positions.data(), GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        if (GraphicsAPICheckError())
-        {
-            m_handle = static_cast<SharedResource::Handle>(handle);
-        }
-        else
-        {
-            glDeleteVertexArrays(1, &handle);
         }
     }
 
@@ -182,23 +244,13 @@ class GLPositionBuffer : public IGeometryResource
     {
         if (isValid())
         {
-           glBindBuffer(GL_ARRAY_BUFFER, m_handle);
+            glBindVertexArray(handle());
         }
     }
 
     virtual void unbind() override
     {
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    virtual ~GLPositionBuffer()
-    {
-        if (isValid())
-        {
-            const GLuint handle = static_cast<GLuint>(m_handle);
-            glDeleteBuffers(1, &handle);
-            m_handle = INVALID_HANDLE;
-        }
+        glBindVertexArray(0);
     }
 };
 
@@ -514,11 +566,19 @@ public:
                 glm::value_ptr(texture->sampler().borderColor));
         }
 
-        update(texture->width(), texture->height(), data);
+        glTexImage2D(GL_TEXTURE_2D, 
+            0, 
+            m_format.internalFormat,
+            texture->width(), 
+            texture->height(), 
+            0, 
+            m_format.dataFormat, 
+            m_format.dataType,
+            data);
 
         if (texture->sampler().mipmapping)
         {
-            generateMipmaps();
+            glGenerateMipmap(GL_TEXTURE_2D);
         }
 
         if (GraphicsAPICheckError())
@@ -546,24 +606,10 @@ public:
     void update(int width, int height, const void* data) override
     {
         // TODO use glTexSubImage2D if dimensions stay the same and only data changes
-
+        glBindTexture(GL_TEXTURE_2D, m_handle);
         glTexImage2D(GL_TEXTURE_2D, 0, m_format.internalFormat,
             width, height, 0, m_format.dataFormat, m_format.dataType, 
             data);
-    }
-
-    void generateMipmaps() override
-    {
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-
-    void bind() override
-    {
-        glBindTexture(GL_TEXTURE_2D, m_handle);
-    }
-
-    void unbind() override
-    {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
@@ -649,11 +695,23 @@ public:
                 glm::value_ptr(texture->sampler().borderColor));
         }
 
-        update(texture->width(), texture->height(), data);
+        // upload cubemap texture data
+        for (int side = 0; side < 6; ++side)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + side,
+                0, 
+                m_format.internalFormat, 
+                texture->width(),
+                texture->height(),
+                0,
+                m_format.dataFormat, 
+                m_format.dataType, 
+                data);
+        }
 
         if (texture->sampler().mipmapping)
         {
-            generateMipmaps();
+            glGenerateMipmap(TARGET_TYPE);
         }
 
         if (GraphicsAPICheckError())
@@ -682,6 +740,8 @@ public:
     {
         // TODO use glTexSubImage2D if dimensions stay the same and only data changes
 
+        glBindTexture(TARGET_TYPE, m_handle);
+
         // upload cubemap texture data
         for (int side = 0; side < 6; ++side)
         {
@@ -689,21 +749,8 @@ public:
                 0, m_format.internalFormat, width, height, 0, 
                 m_format.dataFormat, m_format.dataType, data);
         }
-    }
 
-    void generateMipmaps() override
-    {
-        glGenerateMipmap(TARGET_TYPE);
-    }
-
-    void bind() override
-    {
-        glBindTexture(TARGET_TYPE, m_handle);
-    }
-
-    void unbind() override
-    {
-        glBindTexture(TARGET_TYPE, 0);
+        glBindTexture(GL_TEXTURE_2D, m_handle);
     }
 
 private:
@@ -855,6 +902,8 @@ GraphicsAPI::GraphicsAPI()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    glfwSetErrorCallback(glfwErrorHandler);
 }
 
 GraphicsAPI::~GraphicsAPI()
@@ -862,30 +911,65 @@ GraphicsAPI::~GraphicsAPI()
     glfwTerminate();
 }
 
-bool GraphicsAPI::allocate(GeometrySPtr geometry)
+class GeometryAllocVisitor : public IGeometryVisitor
 {
-    if (geometry->linked())
+public:
+    void visit(Mesh& mesh) override
     {
-        return true;
+        if (mesh.linked())
+        {
+            return;
+        }
+
+        Logger::Info("Allocate geometry buffer (v:%i, f:%i): %.3fKB",
+            mesh.vertexCount(), mesh.indexCount() / 3,
+            (mesh.vertexBufferSize() + mesh.indexBufferSize()) / 1024.f);
+
+        IGeometryResourceUPtr resource(new GLIndexedVertexArray(mesh));
+
+        if (!GraphicsAPICheckError() || !resource || !resource->isValid())
+        {
+            throw std::exception("Could not allocate geometry");
+        }
+
+        mesh.link(std::move(resource));
     }
 
-    Logger::Info("Allocate geometry buffer (v:%i, f:%i): %.3fKB", 
-        geometry->vertexCount(), geometry->indexCount() / 3, 
-        (geometry->vertexBufferSize() + geometry->indexBufferSize()) / 1024.f);
-
-    std::unique_ptr<GLVertexArray> resource(new GLVertexArray(geometry));
-
-    // TODO check glError
-
-    if (resource && resource->isValid())
+    void visit(PrimitiveSet& primitiveSet) override
     {
-        geometry->link(std::move(resource));
-        return true;
+        if (primitiveSet.linked())
+        {
+            return;
+        }
+
+        Logger::Info("Allocate geometry buffer (v:%i): %.3fKB",
+            primitiveSet.vertexCount(), primitiveSet.vertexBufferSize() / 1024.f);
+
+        IGeometryResourceUPtr resource(new GLPrimitiveArray(primitiveSet));
+
+        if (!GraphicsAPICheckError() || !resource || !resource->isValid())
+        {
+            throw std::exception("Could not allocate geometry");
+        }
+
+        primitiveSet.link(std::move(resource));
+    }
+};
+
+bool GraphicsAPI::allocate(IGeometrySPtr geometry)
+{
+    try
+    {
+        GeometryAllocVisitor visitor = GeometryAllocVisitor();
+        geometry->accept(visitor);
+    }
+    catch (const std::exception& e)
+    {
+        Logger::Error(e.what());
+        return false;
     }
 
-    Logger::Error("Could not allocate Geometry.");
-    
-	return false;
+    return true;
 }
 
 bool GraphicsAPI::allocate(ITextureSPtr texture, const void* data)
@@ -1140,7 +1224,7 @@ bool GraphicsAPI::checkError(const char* file, int line)
         default:                               error = "UNHANDLED_ERROR"; break;
         }
 
-        Logger::Error("OpenGL %s | '%s' (ln %i)", error, file, line);
+        Logger::Error("OpenGL %s | '%s' (ln %i)", error.c_str(), file, line);
     }
     return errorCode == GL_NO_ERROR;
 }

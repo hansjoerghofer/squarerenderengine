@@ -4,6 +4,7 @@
 #include "Common/Logger.h"
 #include "Application/GL.h"
 #include "Renderer/RendererState.h"
+#include "Scene/IGeometryVisitor.h"
 
 #include <vector>
 
@@ -27,11 +28,15 @@ public:
 
 	void applyState(const RendererState& state, bool force = false);
 
+	void regenerateMipmaps(ITextureSPtr tex);
+
 private:
 
 	void bindTextures(MaterialSPtr mat);
 
 	void unbindTextures();
+
+	IGeometryVisitorUPtr m_geometryPainter;
 
 	IRenderTargetSPtr m_currentRenderTarget;
 

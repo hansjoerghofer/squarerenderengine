@@ -17,6 +17,8 @@ public:
 
 	void registerDefaultTexture(const std::string& key, ITextureSPtr texture);
 
+	ITextureSPtr findDefaultTexture(const std::string& key) const;
+
 	ShaderProgramSPtr findProgram(const std::string& name) const;
 
 	MaterialSPtr findMaterial(const std::string& name) const;

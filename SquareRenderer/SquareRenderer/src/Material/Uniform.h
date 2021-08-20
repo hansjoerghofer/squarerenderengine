@@ -29,7 +29,7 @@ struct UniformValue
 		switch (t)
 		{
 		case UniformType::Int:		value = int(0);			break;
-		case UniformType::Float:		value = float(0.f);		break;
+		case UniformType::Float:	value = float(0.f);		break;
 		case UniformType::Vec4:		value = glm::vec4(0.f,0.f,0.f,1.f); break;
 		case UniformType::Mat4:		value = glm::mat4(1.f); break;
 		}
@@ -50,4 +50,6 @@ struct UniformMetaInfo
 	UniformValue defaultValue;
 	UniformValue minValue;
 	UniformValue maxValue;
+
+	std::string hint;
 };

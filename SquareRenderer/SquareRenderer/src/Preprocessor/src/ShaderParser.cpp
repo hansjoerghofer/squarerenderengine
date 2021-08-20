@@ -32,6 +32,7 @@ static const std::regex s_uniformRegEx = std::regex("^.*uniform (\\w+) ([\\w_\\[
                                                     "(?:\\s*\\/\\/\\s*(\\[.*\\]))?");   // optional range
 
 static const std::regex s_rangeRegEx = std::regex("\\[\\s?([\\d\\.]+)\\s?,\\s?([\\d\\.]+)\\s?\\]"); // [x,y]
+static const std::regex s_hintRegEx = std::regex("\\[\\s?(\\w+)\\s?\\]"); // [white]
 
 ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
 {
@@ -198,7 +199,7 @@ bool ShaderParser::handleUniform(const std::string& line, std::stringstream& out
         const std::string typeStr = match[1].str();
         const std::string name = match[2].str();
         const std::string defaultValueStr = match.size() > 3 ? match[3].str() : "";
-        const std::string rangeStr = match.size() > 4 ? match[4].str() : "";
+        const std::string hintStr = match.size() > 4 ? match[4].str() : "";
 
         auto found = s_glslTypeToUniformType.find(typeStr);
         if (found == s_glslTypeToUniformType.end())
@@ -207,17 +208,21 @@ bool ShaderParser::handleUniform(const std::string& line, std::stringstream& out
         }
         const UniformType type = found->second;
 
-        std::string rangeValuesStr[2];
-        if (!rangeStr.empty())
+        std::string hintValuesStr[2];
+        if (!hintStr.empty())
         {
-            std::smatch matchRange;
-            if (std::regex_match(rangeStr, matchRange, s_rangeRegEx))
+            std::smatch matchHint;
+            if (std::regex_match(hintStr, matchHint, s_rangeRegEx))
             {
-                rangeValuesStr[0] = matchRange[1].str();
-                rangeValuesStr[1] = matchRange[2].str();
+                hintValuesStr[0] = matchHint[1].str();
+                hintValuesStr[1] = matchHint[2].str();
+            }
+            else if (std::regex_match(hintStr, matchHint, s_hintRegEx))
+            {
+                hintValuesStr[0] = matchHint[1].str();
             }
         }
-        const bool hasRange = !rangeValuesStr[0].empty() && !rangeValuesStr[1].empty();
+        const bool hasRange = !hintValuesStr[0].empty() && !hintValuesStr[1].empty();
 
         UniformMetaInfo metaInfo;
         metaInfo.name = name;
@@ -238,8 +243,8 @@ bool ShaderParser::handleUniform(const std::string& line, std::stringstream& out
 
             if (hasRange)
             {
-                metaInfo.minValue = UniformValue(std::stoi(rangeValuesStr[0]));
-                metaInfo.maxValue = UniformValue(std::stoi(rangeValuesStr[1]));
+                metaInfo.minValue = UniformValue(std::stoi(hintValuesStr[0]));
+                metaInfo.maxValue = UniformValue(std::stoi(hintValuesStr[1]));
             }
             else
             {
@@ -256,8 +261,8 @@ bool ShaderParser::handleUniform(const std::string& line, std::stringstream& out
 
             if (hasRange)
             {
-                metaInfo.minValue = UniformValue(std::stof(rangeValuesStr[0]));
-                metaInfo.maxValue = UniformValue(std::stof(rangeValuesStr[1]));
+                metaInfo.minValue = UniformValue(std::stof(hintValuesStr[0]));
+                metaInfo.maxValue = UniformValue(std::stof(hintValuesStr[1]));
             }
             else if (name.find("Factor") != std::string::npos)
             {
@@ -283,6 +288,11 @@ bool ShaderParser::handleUniform(const std::string& line, std::stringstream& out
                 metaInfo.maxValue = UniformValue(glm::vec4(max, max, max, max));
             }
             break;
+        case UniformType::Texture2D:
+            if (!hintValuesStr[0].empty())
+            {
+                metaInfo.hint = hintValuesStr[0];
+            }
         }
 
         m_tempUniformCache.emplace_back(std::move(metaInfo));

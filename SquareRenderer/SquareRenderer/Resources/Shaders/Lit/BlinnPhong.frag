@@ -14,7 +14,7 @@ in VSData
     vec4[_MAX_SIZE_LIGHT] fragPosLS;
 } vs_in;
 
-uniform sampler2D albedo;
+uniform sampler2D albedoTexture; // [white]
 uniform vec4 albedoColor = vec4(1,1,1,1);
 uniform float shininessFactor = 0.5;
 
@@ -49,7 +49,7 @@ void main()
         shadedColor += visibility * ((diff * _lightsColor[i].rgb) + (spec * _lightsColor[i].rgb));
     }
 
-    vec3 unlitColor = albedoColor.rgb * texture(albedo, vs_in.uv).rgb;
+    vec3 unlitColor = albedoColor.rgb * texture(albedoTexture, vs_in.uv).rgb;
 
     gl_FragColor = vec4(shadedColor * unlitColor, 1);
 }

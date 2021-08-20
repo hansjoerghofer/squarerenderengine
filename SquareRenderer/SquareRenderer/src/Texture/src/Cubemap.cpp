@@ -4,7 +4,6 @@ Cubemap::Cubemap(int width, TextureFormat format, TextureSampler sampler)
     : m_width(width)
     , m_format(format)
     , m_sampler(sampler)
-    , m_isBound(false)
 {
 }
 
@@ -40,46 +39,6 @@ int Cubemap::height() const
 int Cubemap::layers() const
 {
     return 6;
-}
-
-void Cubemap::bind()
-{
-    if (!m_isBound && m_linkedResource)
-    {
-        m_linkedResource->bind();
-        m_isBound = true;
-    }
-}
-
-void Cubemap::unbind()
-{
-    if (m_linkedResource)
-    {
-        m_linkedResource->unbind();
-    }
-
-    m_isBound = false;
-}
-
-void Cubemap::updateMipmaps()
-{
-    if (!m_linkedResource)
-    {
-        return;
-    }
-
-    bool wasBound = m_isBound;
-    if (!m_isBound)
-    {
-        bind();
-    }
-
-    m_linkedResource->generateMipmaps();
-
-    if (!wasBound)
-    {
-        unbind();
-    }
 }
 
 SharedResource::Handle Cubemap::handle() const

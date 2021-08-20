@@ -1,4 +1,5 @@
 #include "Scene/Mesh.h"
+
 #include "API/SharedResource.h"
 
 Mesh::Mesh(const std::vector<Vertex>& vertices,
@@ -31,9 +32,43 @@ Mesh::~Mesh()
 {
 }
 
-bool Mesh::isStatic() const
+void Mesh::accept(IGeometryVisitor& visitor)
 {
-    return true;
+    visitor.visit(*this);
+}
+
+void Mesh::bind()
+{
+    if (!m_isBound && linked())
+    {
+        m_linkedResource->bind();
+        m_isBound = true;
+    }
+}
+
+void Mesh::unbind()
+{
+    if (m_isBound && linked())
+    {
+        m_linkedResource->unbind();
+    }
+    m_isBound = false;
+}
+
+void Mesh::link(IGeometryResourceUPtr resource)
+{
+    m_linkedResource = std::move(resource);
+}
+
+bool Mesh::linked() const
+{
+    return m_linkedResource
+        && m_linkedResource->isValid();
+}
+
+bool Mesh::isBound() const
+{
+    return m_isBound && linked();
 }
 
 size_t Mesh::vertexCount() const

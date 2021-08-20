@@ -27,12 +27,6 @@ public:
 
 	virtual int layers() const override;
 
-	virtual void bind() override;
-
-	virtual void unbind() override;
-
-	virtual void updateMipmaps();
-
 	virtual SharedResource::Handle handle() const override;
 
 	void link(ITextureResourceUPtr resource);
@@ -40,8 +34,6 @@ public:
 protected:
 
 	int m_width;
-
-	bool m_isBound;
 
 	TextureFormat m_format;
 

@@ -2,7 +2,7 @@
 
 #include "Common/Macros.h"
 #include "Renderer/IDrawable.h"
-#include "Renderer/IGeometry.h"
+#include "Scene/IGeometry.h"
 #include "Material/Material.h"
 
 class Primitive : public IDrawable

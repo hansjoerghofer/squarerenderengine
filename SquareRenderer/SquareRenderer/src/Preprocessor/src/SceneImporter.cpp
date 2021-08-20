@@ -4,7 +4,7 @@
 #include "API/GraphicsAPI.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
-#include "Scene/Geometry.h"
+#include "Scene/IGeometry.h"
 #include "Material/MaterialLibrary.h"
 
 #include <filesystem>
@@ -29,15 +29,15 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 	}
 
 	SceneLoader loader(m_matLib);
-	loader.setDefaultProgramName("Lit.BlinnPhong");
+	loader.setDefaultProgramName("Lit.PBR");
 	SceneUPtr scene = loader.loadFromFile(filepath);
 
 	auto t = scene->traverser();
 	while (t.hasNext())
 	{
 		SceneNodeSPtr node = t.next();
-		GeometrySPtr geo = node->geometry() ? 
-			std::dynamic_pointer_cast<Geometry>(node->geometry()) : nullptr;
+		IGeometrySPtr geo = node->geometry() ? 
+			std::dynamic_pointer_cast<IGeometry>(node->geometry()) : nullptr;
 
 		if (geo && !m_api->allocate(geo))
 		{

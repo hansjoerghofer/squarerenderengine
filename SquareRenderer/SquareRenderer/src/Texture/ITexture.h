@@ -19,9 +19,5 @@ public:
 
     virtual int layers() const = 0;
 
-    virtual void bind() = 0;
-
-    virtual void unbind() = 0;
-
     virtual SharedResource::Handle handle() const = 0;
 };

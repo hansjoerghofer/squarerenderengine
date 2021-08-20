@@ -1,11 +1,14 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "Geometry.h"
+#include "Scene/IGeometry.h"
+#include "API/SharedResource.h"
+
+#include <vector>
 
 DECLARE_PTRS(Mesh);
 
-class Mesh : public Geometry
+class Mesh : public IGeometry
 {
 public:
 
@@ -23,33 +26,47 @@ public:
         bool hasTangents = true
     );
 
-    virtual ~Mesh() override;
+    virtual ~Mesh();
 
-    virtual bool isStatic() const override;
+    virtual void accept(IGeometryVisitor& visitor) override;
 
-    virtual size_t vertexCount() const override;
+    virtual void bind() override;
 
-    virtual size_t vertexBufferSize() const override;
+    virtual void unbind() override;
 
-    virtual size_t indexCount() const override;
+    virtual void link(IGeometryResourceUPtr resource);
 
-    virtual size_t indexBufferSize() const override;
+    virtual bool linked() const;
 
-    virtual const std::vector<Vertex>& vertices() const override;
+    virtual bool isBound() const;
 
-    virtual const std::vector<uint32_t>& indices() const override;
+    virtual size_t vertexCount() const;
 
-    virtual bool hasUVs() const override;
+    virtual size_t vertexBufferSize() const;
 
-    virtual bool hasNormals() const override;
+    virtual size_t indexCount() const;
 
-    virtual bool hasTangents() const override;
+    virtual size_t indexBufferSize() const;
+
+    virtual const std::vector<Vertex>& vertices() const;
+
+    virtual const std::vector<uint32_t>& indices() const;
+
+    virtual bool hasUVs() const;
+
+    virtual bool hasNormals() const;
+
+    virtual bool hasTangents() const;
 
 protected:
 
     const std::vector<Vertex> m_vertices;
 
     const std::vector<uint32_t> m_indices;
+
+    IGeometryResourceUPtr m_linkedResource;
+
+    bool m_isBound = false;
 
     const bool m_hasUVs;
     const bool m_hasNormals;

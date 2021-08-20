@@ -25,17 +25,11 @@ public:
 
 	virtual int layers() const override;
 
-	virtual void bind() override;
-
-	virtual void unbind() override;
-
 	virtual SharedResource::Handle handle() const override;
 
 	virtual TextureFormat format() const;
 
 	const TextureSampler& sampler() const;
-
-	void updateMipmaps();
 
 	void link(ITextureResourceUPtr resource);
 
@@ -44,8 +38,6 @@ private:
 	int m_width;
 
 	int m_height;
-
-	bool m_isBound;
 
 	TextureFormat m_format;
 

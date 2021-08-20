@@ -6,7 +6,7 @@
 
 DECLARE_PTRS(GraphicsAPI);
 DECLARE_PTRS(IUniformBlockResource);
-DECLARE_PTRS(Geometry);
+DECLARE_PTRS(IGeometry);
 DECLARE_PTRS(ShaderSource);
 DECLARE_PTRS(ShaderProgram);
 DECLARE_PTRS(ITexture);
@@ -21,7 +21,7 @@ public:
 
 	virtual ~GraphicsAPI();
 
-	bool allocate(GeometrySPtr geometry);
+	bool allocate(IGeometrySPtr geometry);
 
 	bool allocate(ITextureSPtr texture, const void* data = nullptr);
 

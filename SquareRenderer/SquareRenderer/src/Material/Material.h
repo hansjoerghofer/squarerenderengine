@@ -31,6 +31,13 @@ public:
 	bool setUniform(const std::string& name, UniformValue&& value);
 	bool setUniform(const std::string& name, ITextureSPtr value);
 
+	template<typename T>
+	bool setUniform(const std::string& name, T&& value, int index)
+	{
+		const std::string indexed = name + "[" + std::to_string(index) + "]";
+		return setUniform(indexed, std::forward<T>(value));
+	}
+
 	UniformValue uniformValue(const std::string& name) const;
 
 	const std::unordered_map<std::string, ITextureSPtr>& uniformTextures() const;

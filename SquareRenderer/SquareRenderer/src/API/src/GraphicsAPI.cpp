@@ -778,12 +778,12 @@ public:
             case TextureLayout::Texture2D:
                 glFramebufferTexture2D(GL_FRAMEBUFFER,
                     attachement, GL_TEXTURE_2D,
-                    att->handle(), 0);
+                    att->handle(), rendertarget->level());
                 break;
             case TextureLayout::Cubemap:
                 glFramebufferTexture(GL_FRAMEBUFFER,
                     attachement, att->handle(),
-                    0);
+                    rendertarget->level());
                 break;
             }
 
@@ -802,7 +802,7 @@ public:
             {
                 glFramebufferTexture2D(GL_FRAMEBUFFER,
                     depthFormat, GL_TEXTURE_2D,
-                    rendertarget->depthBuffer()->handle(), 0);
+                    rendertarget->depthBuffer()->handle(), rendertarget->level());
             }
             else
             {

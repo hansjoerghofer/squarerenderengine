@@ -136,14 +136,14 @@ void main()
         vec3 specular     = numerator / max(denominator, 0.001);
 
         // shadow calculation
-        float visibility = 1;//_shadow(IN.pFragmentLS[i], i);
+        float visibility = _shadow(IN.pFragmentLS[i], i);
 
         float NdotL = max(dot(N, L), 0.0);        
         cLight += (kD * mat.albedo / PI + specular) * radiance * NdotL * visibility;
     }
 
-    //vec3 cAmbient = IBL(N, V, R, F0, mat);
-    vec3 cAmbient = vec3(0.2,0.2,0.2) * mat.albedo;
+    vec3 cAmbient = IBL(N, V, R, F0, mat);
+    //vec3 cAmbient = vec3(0.2,0.2,0.2) * mat.albedo;
 
     vec3 cShaded = cLight + cAmbient;
 

@@ -276,8 +276,6 @@ void Renderer::applyState(const RendererState& state, bool force)
         }
     }
 
-    m_currentState.primitive = state.primitive;
-
     GraphicsAPICheckError();
 }
 

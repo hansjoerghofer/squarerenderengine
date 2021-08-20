@@ -34,6 +34,13 @@ struct ShadowData
 	MaterialSPtr material = nullptr;
 };
 
+struct IBLData
+{
+	CubemapSPtr diffuse;
+	CubemapSPtr specular;
+	Texture2DSPtr brdf;
+};
+
 class RenderEngine
 {
 public:
@@ -63,7 +70,15 @@ public:
 	/* Helper Functions */
 
 	void projectEquirectangularToCubemap(Texture2DSPtr source, CubemapSPtr target);
+
+	IBLData generateIBL(CubemapSPtr hdri);
+
+	void hdriToDiffuseIrradiance(CubemapSPtr hdri, CubemapSPtr diffIrradiance);
+
+	void hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIrradiance);
 	
+	void generateIntegratedBRDF(Texture2DSPtr integratedBRDF);
+
 protected:
 
 	void render(const RenderPass&);
@@ -100,6 +115,8 @@ protected:
 	std::list<RenderPassSPtr> m_renderPassList;
 
 	std::unordered_map<ILightsourceSPtr, ShadowData> m_shadowData;
+
+	IBLData m_ibl;
 
 	void rebuildCommandList();
 

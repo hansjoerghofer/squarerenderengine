@@ -5,3 +5,6 @@ PP.Tonemapping  PostProcessing/Fullscreen.vert  PostProcessing/Tonemapping.frag
 Util.ShadowMapping	Util/ShadowMapping.vert	Util/ShadowMapping.frag
 Util.ProjectEqr2Cube	Util/Default.vert	Util/Cubemap.geom	Util/Eqr2Cube.frag
 Util.Skybox	Util/Skybox.vert	Util/Skybox.frag
+Util.IntegratedBRDF	PostProcessing/Fullscreen.vert	Util/IntegratedBRDF.frag
+Util.IBLDiffuse	Util/Default.vert	Util/Cubemap.geom	Util/IBLDiffuse.frag
+Util.IBLSpecular	Util/Default.vert	Util/Cubemap.geom	Util/IBLSpecular.frag

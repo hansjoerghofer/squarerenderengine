@@ -16,6 +16,8 @@ class RenderPass
 {
 public:
 
+    RenderPass(const RenderCommand& command);
+
     RenderPass(RenderCommand&& command);
 
     virtual ~RenderPass();

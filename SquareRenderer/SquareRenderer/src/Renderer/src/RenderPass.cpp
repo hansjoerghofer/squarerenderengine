@@ -4,6 +4,11 @@
 #include "Renderer/IRenderTarget.h"
 #include "Material/Material.h"
 
+RenderPass::RenderPass(const RenderCommand& command)
+	: m_command(command)
+{
+}
+
 RenderPass::RenderPass(RenderCommand&& command)
 	: m_command(command)
 {

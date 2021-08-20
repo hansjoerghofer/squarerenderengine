@@ -35,6 +35,16 @@
 
 #include <set>
 
+static const glm::mat4 CUBE_P = glm::perspective(glm::radians(90.f), 1.f, .1f, 10.f);
+static const glm::mat4 CUBE_FACE_VP[] = {
+	CUBE_P * glm::lookAt(glm::vec3(0,0,0), glm::vec3(1, 0, 0), glm::vec3(0,-1, 0)),
+	CUBE_P * glm::lookAt(glm::vec3(0,0,0), glm::vec3(-1, 0, 0), glm::vec3(0,-1, 0)),
+	CUBE_P * glm::lookAt(glm::vec3(0,0,0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1)),
+	CUBE_P * glm::lookAt(glm::vec3(0,0,0), glm::vec3(0,-1, 0), glm::vec3(0, 0,-1)),
+	CUBE_P * glm::lookAt(glm::vec3(0,0,0), glm::vec3(0, 0, 1), glm::vec3(0,-1, 0)),
+	CUBE_P * glm::lookAt(glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0,-1, 0))
+};
+
 RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 	: m_api(api)
 	, m_matlib(matlib)
@@ -81,6 +91,9 @@ RenderEngine::~RenderEngine()
 void RenderEngine::setScene(SceneSPtr scene)
 {
 	m_scene = scene;
+
+	// TODO check if scene supports IBL
+	m_ibl = generateIBL(m_scene->skybox());
 
 	rebuildCommandList();
 }
@@ -222,6 +235,14 @@ void RenderEngine::rebuildCommandList()
 					"_shadowMaps[" + std::to_string(shadowData.index) + "]",
 					shadowData.data);
 			}
+
+			// set IBL
+			if (m_ibl.brdf && m_ibl.specular && m_ibl.diffuse)
+			{
+				program->setUniformDefault("brdfLUT", m_ibl.brdf);
+				program->setUniformDefault("prefilterMap", m_ibl.specular);
+				program->setUniformDefault("irradianceMap", m_ibl.diffuse);
+			}
 		}
 
 		// opaque scene rendering
@@ -269,7 +290,6 @@ void RenderEngine::rebuildCommandList()
 		cmd.state.clearDepth = false;
 		cmd.state.writeDepth = false;
 		//cmd.state.depthTestMode = DepthTest::LessEqual;
-		cmd.state.primitive = PrimitiveMode::Lines;
 		cmd.drawables.push_back(m_gizmos);
 
 		m_renderPassList.emplace_back(
@@ -553,7 +573,6 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 	}
 
 	RenderTargetSPtr rt = std::make_shared<RenderTarget>(target);
-	m_api->allocate(rt);
 	if (!m_api->allocate(rt))
 	{
 		return;
@@ -566,7 +585,7 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 		return;
 	}
 
-	MaterialSPtr projectionMat = m_matlib->instanciate("Util.ProjectEqr2Cube", "ProjecEqr2Cube");
+	MaterialSPtr projectionMat = m_matlib->instanciate("Util.ProjectEqr2Cube");
 	if (!projectionMat)
 	{
 		return;
@@ -576,20 +595,10 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 	projectionMat->setUniform("horizontalRotation", (rotXDeg % 360) / 360.f);
 	projectionMat->setUniform("equirectangularMap", source);
 
-	// TODO defaults, store somewhere else
-	const glm::mat4 proj = glm::perspective(glm::radians(90.f), 1.f, .1f, 10.f);
-	const glm::mat4 views[6] = {
-		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 1, 0, 0), glm::vec3( 0,-1, 0)),
-		glm::lookAt(glm::vec3(0,0,0), glm::vec3(-1, 0, 0), glm::vec3( 0,-1, 0)),
-		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 1, 0), glm::vec3( 0, 0, 1)),
-		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0,-1, 0), glm::vec3( 0, 0,-1)),
-		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0, 1), glm::vec3( 0,-1, 0)),
-		glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0,-1), glm::vec3( 0,-1, 0))
-	};
-
 	for (int i = 0; i < 6; ++i)
 	{
-		projectionMat->setUniform("VP[" + std::to_string(i) + "]", proj * views[i]);
+		//projectionMat->setUniform("VP[" + std::to_string(i) + "]", CUBE_FACE_VP[i]);
+		projectionMat->setUniform("VP", CUBE_FACE_VP[i], i);
 	}
 
 	RenderCommand cmd;
@@ -606,4 +615,146 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 	render(RenderPass(std::move(cmd)));
 
 	m_renderer->regenerateMipmaps(target);
+}
+
+IBLData RenderEngine::generateIBL(CubemapSPtr hdri)
+{
+	const int diffuseRes = 32;
+	const int specularRes = 128;
+	const int brdfRes = 512;
+
+	IBLData ibl;
+
+	TextureSampler sampler;
+	sampler.wrap = TextureWrap::ClampToEdge;
+	sampler.mipmapping = true;
+	ibl.specular = std::make_shared<Cubemap>(specularRes, TextureFormat::RGBHalf, sampler);
+
+	sampler.mipmapping = false;
+	ibl.diffuse = std::make_shared<Cubemap>(diffuseRes, TextureFormat::RGBHalf, sampler);
+	ibl.brdf = std::make_shared<Texture2D>(brdfRes, brdfRes, TextureFormat::RGHalf, sampler);
+
+	hdriToDiffuseIrradiance(hdri, ibl.diffuse);
+	hdriToSpecularIrradiance(hdri, ibl.specular);
+	generateIntegratedBRDF(ibl.brdf);
+
+	return ibl;
+}
+
+void RenderEngine::hdriToDiffuseIrradiance(CubemapSPtr hdri, CubemapSPtr diffIrradiance)
+{
+	RenderTargetSPtr rt = std::make_shared<RenderTarget>(diffIrradiance);
+	if (!m_api->allocate(rt))
+	{
+		return;
+	}
+
+	IGeometrySPtr cubeGeom = MeshBuilder::cube();
+	if (!m_api->allocate(cubeGeom))
+	{
+		Logger::Warning("Error while allocating cube geometry.");
+		return;
+	}
+
+	MaterialSPtr mat = m_matlib->instanciate("Util.IBLDiffuse");
+	if (!mat)
+	{
+		return;
+	}
+
+	mat->setUniform("hdri", hdri);
+
+	for (int i = 0; i < 6; ++i)
+	{
+		mat->setUniform("VP", CUBE_FACE_VP[i], i);
+	}
+
+	RenderCommand cmd;
+	cmd.name = "HDRI2DiffuseIrradiance";
+	cmd.target = rt;
+	cmd.drawables.emplace_back(new Primitive(cubeGeom, mat));
+
+	cmd.state.cullingMode = Culling::Front;
+	cmd.state.depthTestMode = DepthTest::None;
+	cmd.state.writeDepth = false;
+	cmd.state.clearDepth = false;
+	cmd.state.seamlessCubemapFiltering = true;
+
+	render(RenderPass(std::move(cmd)));
+}
+
+void RenderEngine::hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIrradiance)
+{
+	IGeometrySPtr cubeGeom = MeshBuilder::cube();
+	if (!m_api->allocate(cubeGeom))
+	{
+		Logger::Warning("Error while allocating cube geometry.");
+		return;
+	}
+
+	MaterialSPtr mat = m_matlib->instanciate("Util.IBLSpecular");
+	if (!mat)
+	{
+		return;
+	}
+
+	mat->setUniform("hdri", hdri);
+	mat->setUniform("resolution", static_cast<float>(hdri->width()));
+
+	for (int i = 0; i < 6; ++i)
+	{
+		mat->setUniform("VP", CUBE_FACE_VP[i], i);
+	}
+
+	RenderCommand cmd;
+	cmd.name = "HDRI2DiffuseIrradiance";
+	cmd.drawables.emplace_back(new Primitive(cubeGeom, mat));
+
+	cmd.state.cullingMode = Culling::Front;
+	cmd.state.depthTestMode = DepthTest::None;
+	cmd.state.writeDepth = false;
+	cmd.state.clearDepth = false;
+	cmd.state.seamlessCubemapFiltering = true;
+
+	// --- render ----
+	const unsigned int resolution = specIrradiance->width();
+	unsigned int maxMipLevels = static_cast<unsigned int>(std::ceil(std::log2(specIrradiance->width())));
+	for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
+	{	
+		float roughness = static_cast<float>(mip) / static_cast<float>(maxMipLevels - 1);
+		mat->setUniform("roughness", roughness);
+
+		RenderTargetSPtr rt = std::make_shared<RenderTarget>(specIrradiance, nullptr, mip);
+		if (!m_api->allocate(rt))
+		{
+			return;
+		}
+		cmd.target = rt;
+
+		render(RenderPass(cmd));
+	}
+}
+
+void RenderEngine::generateIntegratedBRDF(Texture2DSPtr integratedBRDF)
+{
+	RenderTargetSPtr rt = std::make_shared<RenderTarget>(integratedBRDF);
+	if (!m_api->allocate(rt))
+	{
+		return;
+	}
+
+	MaterialSPtr brdfMat = m_matlib->instanciate("Util.IntegratedBRDF");
+	if (!brdfMat)
+	{
+		return;
+	}
+
+	RenderCommand cmd;
+	cmd.name = "GenerateIntegratedBRDF";
+	cmd.target = rt;
+	cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, brdfMat));
+
+	cmd.state = RendererState::Blit();
+
+	render(RenderPass(std::move(cmd)));
 }

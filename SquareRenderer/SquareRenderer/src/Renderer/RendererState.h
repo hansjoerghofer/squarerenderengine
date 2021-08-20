@@ -66,10 +66,20 @@ struct RendererState
     Culling cullingMode = Culling::Back;
     BlendFactor blendSrc = BlendFactor::None;
     BlendFactor blendDst = BlendFactor::None;
-    PrimitiveMode primitive = PrimitiveMode::Triangles;
-
+    
     // shadow bias
     glm::vec2 depthOffset = glm::vec2(0, 0);
 
     bool seamlessCubemapFiltering = false;
+
+    static RendererState Blit()
+    {
+        RendererState state;
+        state.clearColor = true;
+        state.clearDepth = false;
+        state.clearStencil = false;
+        state.color = glm::vec4(1, 1, 1, 1);
+        state.depthTestMode = DepthTest::None;
+        return state;
+    }
 };

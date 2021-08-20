@@ -54,8 +54,8 @@ MaterialUPtr MaterialLibrary::instanciate(const std::string& programName) const
 	ShaderProgramSPtr program = findProgram(programName);
 	if (program)
 	{
-		std::stringstream name(program->name());
-		name << "_mat(" << program.use_count() << ")";
+		std::stringstream name;
+		name << program->name() << "_mat(" << std::to_string(program.use_count()) << ")";
 
 		return MaterialUPtr(new Material(name.str(), program));
 	}

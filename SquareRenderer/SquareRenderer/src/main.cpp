@@ -62,7 +62,8 @@ int main()
         ScopedTimerLog t("Texture import");
         TextureImporter ti(api);
         uvTexture = ti.importFromFile("Resources/Textures/uvgrid.png");
-        skyTexture = ti.importFromFile("Resources/Textures/eqr.jpg");
+        //skyTexture = ti.importFromFile("Resources/Textures/eqr.jpg");
+        skyTexture = ti.importFromFile("Resources/Textures/lakeside_2k.hdr");
     }
 
     SceneSPtr scene;

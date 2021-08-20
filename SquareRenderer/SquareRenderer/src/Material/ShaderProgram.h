@@ -49,6 +49,20 @@ public:
 
 	bool bindUniformBlock(const std::string& name, int bindingPoint);
 
+	template<typename T>
+	bool setUniform(const std::string& name, T&& value, int index)
+	{
+		const std::string indexed = name + "[" + std::to_string(index) + "]";
+		return setUniform(indexed, std::forward<T>(value));
+	}
+
+	template<typename T>
+	bool setUniformDefault(const std::string& name, T&& value, int index)
+	{
+		const std::string indexed = name + "[" + std::to_string(index) + "]";
+		return setUniformDefault(indexed, std::forward<T>(value));
+	}
+
 private:
 
 	std::string m_name;

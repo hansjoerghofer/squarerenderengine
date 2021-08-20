@@ -4,65 +4,83 @@
 #include "Texture/Texture2D.h"
 
 RenderTarget::RenderTarget(
-	ITextureSPtr colorTarget, DepthBufferFormat format)
+	ITextureSPtr colorTarget, DepthBufferFormat format, int level)
 	: m_colorTargets({ colorTarget })
 	, m_depthBuffer(new DepthBuffer(colorTarget->width(), colorTarget->height(), format))
+	, m_level(level)
 {
 }
 
 RenderTarget::RenderTarget(
-	std::vector<ITextureSPtr>&& colorTargets, DepthBufferFormat format)
+	std::vector<ITextureSPtr>&& colorTargets, DepthBufferFormat format, int level)
 	: m_colorTargets(std::move(colorTargets))
 	, m_depthBuffer(new DepthBuffer(
 		m_colorTargets.front()->width(), 
 		m_colorTargets.front()->height(), format))
+	, m_level(level)
 {
 }
 
 RenderTarget::RenderTarget(
-	ITextureSPtr colorTarget, IDepthAttachmentSPtr depthBuffer)
+	ITextureSPtr colorTarget, IDepthAttachmentSPtr depthBuffer, int level)
 	: m_colorTargets({ colorTarget })
 	, m_depthBuffer(depthBuffer)
+	, m_level(level)
 {
 }
 
 RenderTarget::RenderTarget(
-	std::vector<ITextureSPtr>&& colorTargets, IDepthAttachmentSPtr depthBuffer)
+	std::vector<ITextureSPtr>&& colorTargets, IDepthAttachmentSPtr depthBuffer, int level)
 	: m_colorTargets(std::move(colorTargets))
 	, m_depthBuffer(depthBuffer)
+	, m_level(level)
 {
 }
 
 RenderTarget::RenderTarget(IDepthAttachmentSPtr depthBuffer)
 	: m_colorTargets()
 	, m_depthBuffer(depthBuffer)
+	, m_level(0)
 {
 }
 
 int RenderTarget::width() const
 {
+	int width = 0;
+
 	if (!m_colorTargets.empty())
 	{
-		return m_colorTargets.front()->width();
+		width = m_colorTargets.front()->width();
 	}
 	else if (m_depthBuffer)
 	{
-		return m_depthBuffer->width();
+		width = m_depthBuffer->width();
 	}
-	return 0;
+
+	// compute the size of the selected level
+	return width * std::pow(0.5, m_level);
 }
 
 int RenderTarget::height() const
 {
+	int height = 0;
+
 	if (!m_colorTargets.empty())
 	{
-		return m_colorTargets.front()->height();
+		height = m_colorTargets.front()->height();
 	}
 	else if (m_depthBuffer)
 	{
-		return m_depthBuffer->height();
+		height = m_depthBuffer->height();
 	}
-	return 0;
+
+	// compute the size of the selected level
+	return height * std::pow(0.5, m_level);
+}
+
+int RenderTarget::level() const
+{
+	return m_level;
 }
 
 SharedResource::Handle RenderTarget::handle() const

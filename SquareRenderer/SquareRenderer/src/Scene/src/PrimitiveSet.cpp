@@ -4,14 +4,10 @@
 PrimitiveSet::PrimitiveSet(
 	PrimitiveType type,
 	std::vector<Vertex>&& vertices, 
-	bool hasUVs, 
-	bool hasNormals, 
-	bool hasTangents)
+	unsigned char dataFieldFlags)
 	: m_type(type)
 	, m_vertices(vertices)
-	, m_hasUVs(hasUVs)
-	, m_hasNormals(hasNormals)
-	, m_hasTangents(hasTangents)
+	, m_dataFieldFlags(dataFieldFlags)
 {
 }
 
@@ -40,6 +36,11 @@ void PrimitiveSet::unbind()
 		m_linkedResource->unbind();
 	}
 	m_isBound = false;
+}
+
+unsigned char PrimitiveSet::dataFieldFlags() const
+{
+	return m_dataFieldFlags;
 }
 
 void PrimitiveSet::link(IGeometryResourceUPtr resource)
@@ -81,19 +82,4 @@ size_t PrimitiveSet::vertexBufferSize() const
 const std::vector<Vertex>& PrimitiveSet::vertices() const
 {
 	return m_vertices;
-}
-
-bool PrimitiveSet::hasUVs() const
-{
-	return m_hasUVs;
-}
-
-bool PrimitiveSet::hasNormals() const
-{
-	return m_hasNormals;
-}
-
-bool PrimitiveSet::hasTangents() const
-{
-	return m_hasTangents;
 }

@@ -58,7 +58,7 @@ IGeometryUPtr MeshBuilder::cube()
         22, 23, 20
     };
 
-	return std::make_unique<Mesh>(std::move(vertices), std::move(indices), true, true, false);
+	return std::make_unique<Mesh>(std::move(vertices), std::move(indices), Vertex::DATA_UV | Vertex::DATA_NORMAL);
 }
 
 IGeometryUPtr MeshBuilder::screenTriangle()

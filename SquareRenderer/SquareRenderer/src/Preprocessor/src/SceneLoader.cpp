@@ -88,24 +88,35 @@ MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
         return MeshSPtr();
     }
 
-    // TODO use reserve when emplacing
+    unsigned char dataFieldFlags = 0;
+    dataFieldFlags |= mesh.HasTextureCoords(0) ? Vertex::DATA_UV : 0;
+    dataFieldFlags |= mesh.HasNormals() ? Vertex::DATA_NORMAL : 0;
+    dataFieldFlags |= mesh.HasTangentsAndBitangents() ? Vertex::DATA_TANGENT : 0;
+
     std::vector<Vertex> vertices(mesh.mNumVertices);
 
     for (unsigned int i = 0; i < mesh.mNumVertices; ++i)
     {
-        // TODO use emplace
-        Vertex vertex = Vertex();
+        Vertex& vertex = vertices[i];
         
         Map(mesh.mVertices[i], vertex.position);
-        Map(mesh.mNormals[i], vertex.normal);
-        Map(mesh.mTangents[i], vertex.tangent);
-        Map(mesh.mTextureCoords[0][i], vertex.uv);
 
-        vertices[i] = std::move(vertex);
+        if (dataFieldFlags & Vertex::DATA_UV != 0)
+        {
+            Map(mesh.mTextureCoords[0][i], vertex.uv);
+        }
+        if (dataFieldFlags & Vertex::DATA_NORMAL != 0)
+        {
+            Map(mesh.mNormals[i], vertex.normal);
+        }
+        if (dataFieldFlags & Vertex::DATA_TANGENT != 0)
+        {
+            Map(mesh.mTangents[i], vertex.tangent);
+        }
     }
 
-    const unsigned int faceCount = mesh.mNumFaces;
-    const unsigned int vertPerTri = 3;
+    const size_t faceCount = mesh.mNumFaces;
+    constexpr size_t vertPerTri = 3;
     std::vector<uint32_t> indices(faceCount * vertPerTri);
 
     for (unsigned int i = 0; i < faceCount; ++i)
@@ -125,7 +136,7 @@ MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
         }
     }
 
-    return MeshSPtr(new Mesh(std::move(vertices), std::move(indices)));
+    return std::make_shared<Mesh>(std::move(vertices), std::move(indices), dataFieldFlags);
 }
 
 SceneNodeSPtr SceneLoader::processNode(

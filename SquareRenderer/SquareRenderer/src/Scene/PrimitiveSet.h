@@ -20,9 +20,7 @@ public:
 
 	PrimitiveSet(PrimitiveType type,
 		std::vector<Vertex>&& vertices, 
-		bool hasUVs = false,
-		bool hasNormals = false,
-		bool hasTangents = false);
+		unsigned char dataFieldFlags = Vertex::DATA_POSITION);
 
 	virtual ~PrimitiveSet();
 
@@ -31,6 +29,8 @@ public:
 	virtual void bind() override;
 
 	virtual void unbind() override;
+
+	virtual unsigned char dataFieldFlags() const override;
 
 	virtual void link(IGeometryResourceUPtr resource);
 
@@ -48,12 +48,6 @@ public:
 
 	virtual const std::vector<Vertex>& vertices() const;
 
-	virtual bool hasUVs() const;
-
-	virtual bool hasNormals() const;
-
-	virtual bool hasTangents() const;
-
 protected:
 
 	PrimitiveType m_type;
@@ -64,8 +58,6 @@ protected:
 
 	bool m_isBound = false;
 
-	const bool m_hasUVs;
-	const bool m_hasNormals;
-	const bool m_hasTangents;
+	const unsigned char m_dataFieldFlags;
 };
 

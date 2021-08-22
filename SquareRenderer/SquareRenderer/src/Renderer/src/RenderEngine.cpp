@@ -342,7 +342,7 @@ void RenderEngine::setupGizmos(const std::string& programName)
 	std::vector<Vertex> vertices = GizmoHelper::linesToPrimitives(lines);
 
 	IGeometrySPtr gizmoGeometry = std::make_shared<PrimitiveSet>(
-		PrimitiveType::Lines, std::move(vertices), false, true);
+		PrimitiveType::Lines, std::move(vertices), Vertex::DATA_NORMAL);
 
 	if (!m_api->allocate(gizmoGeometry))
 	{

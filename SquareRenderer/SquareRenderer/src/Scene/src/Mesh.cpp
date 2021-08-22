@@ -4,27 +4,19 @@
 
 Mesh::Mesh(const std::vector<Vertex>& vertices,
            const std::vector<uint32_t>& indices,
-           bool hasUVs,
-           bool hasNormals,
-           bool hasTangents)
+           unsigned char dataFieldFlags)
     : m_vertices(vertices)
     , m_indices(indices)
-    , m_hasUVs(hasUVs)
-    , m_hasNormals(hasNormals)
-    , m_hasTangents(hasTangents)
+    , m_dataFieldFlags(dataFieldFlags)
 {
 }
 
 Mesh::Mesh(std::vector<Vertex>&& vertices,
            std::vector<uint32_t>&& indices,
-           bool hasUVs,
-           bool hasNormals,
-           bool hasTangents)
+           unsigned char dataFieldFlags)
     : m_vertices(vertices)
     , m_indices(indices)
-    , m_hasUVs(hasUVs)
-    , m_hasNormals(hasNormals)
-    , m_hasTangents(hasTangents)
+    , m_dataFieldFlags(dataFieldFlags)
 {
 }
 
@@ -101,17 +93,7 @@ const std::vector<uint32_t>& Mesh::indices() const
     return m_indices;
 }
 
-bool Mesh::hasUVs() const
+unsigned char Mesh::dataFieldFlags() const
 {
-    return m_hasUVs;
-}
-
-bool Mesh::hasNormals() const
-{
-    return m_hasNormals;
-}
-
-bool Mesh::hasTangents() const
-{
-    return m_hasTangents;
+    return m_dataFieldFlags;
 }

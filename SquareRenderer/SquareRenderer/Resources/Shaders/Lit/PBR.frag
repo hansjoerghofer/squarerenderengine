@@ -142,8 +142,7 @@ void main()
         cLight += (kD * mat.albedo / PI + specular) * radiance * NdotL * visibility;
     }
 
-    vec3 cAmbient = IBL(N, V, R, F0, mat);
-    //vec3 cAmbient = vec3(0.2,0.2,0.2) * mat.albedo;
+    vec3 cAmbient = IBL(N, V, R, F0, mat) * mat.albedo;
 
     vec3 cShaded = cLight + cAmbient;
 

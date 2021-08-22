@@ -92,7 +92,7 @@ public:
             stride, (void*)offsetof(Vertex, position));
 
         int location = 1;
-        if (mesh.hasUVs())
+        if ((mesh.dataFieldFlags() & Vertex::DATA_UV) != 0)
         {
             // vertex texture coords
             glEnableVertexAttribArray(location);
@@ -103,7 +103,7 @@ public:
             ++location;
         }
 
-        if (mesh.hasNormals())
+        if ((mesh.dataFieldFlags() & Vertex::DATA_NORMAL) != 0)
         {
             // vertex normals
             glEnableVertexAttribArray(location);
@@ -114,7 +114,7 @@ public:
             ++location;
         }
 
-        if (mesh.hasTangents())
+        if ((mesh.dataFieldFlags() & Vertex::DATA_TANGENT) != 0)
         {
             // vertex tangents
             glEnableVertexAttribArray(location);
@@ -186,7 +186,7 @@ public:
             stride, (void*)offsetof(Vertex, position));
 
         int location = 1;
-        if (primitiveSet.hasUVs())
+        if ((primitiveSet.dataFieldFlags() & Vertex::DATA_UV) != 0)
         {
             // vertex texture coords
             glEnableVertexAttribArray(location);
@@ -197,7 +197,7 @@ public:
             ++location;
         }
 
-        if (primitiveSet.hasNormals())
+        if ((primitiveSet.dataFieldFlags() & Vertex::DATA_NORMAL) != 0)
         {
             // vertex normals
             glEnableVertexAttribArray(location);
@@ -208,7 +208,7 @@ public:
             ++location;
         }
 
-        if (primitiveSet.hasTangents())
+        if ((primitiveSet.dataFieldFlags() & Vertex::DATA_TANGENT) != 0)
         {
             // vertex tangents
             glEnableVertexAttribArray(location);

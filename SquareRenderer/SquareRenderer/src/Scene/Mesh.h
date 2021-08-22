@@ -14,16 +14,12 @@ public:
 
     Mesh(const std::vector<Vertex>& vertices,
         const std::vector<uint32_t>& indices,
-        bool hasUVs = true,
-        bool hasNormals = true,
-        bool hasTangents = true
+        unsigned char dataFieldFlags = Vertex::DATA_FULL
     );
 
     Mesh(std::vector<Vertex>&& vertices,
          std::vector<uint32_t>&& indices,
-        bool hasUVs = true,
-        bool hasNormals = true,
-        bool hasTangents = true
+        unsigned char dataFieldFlags = Vertex::DATA_FULL
     );
 
     virtual ~Mesh();
@@ -33,6 +29,8 @@ public:
     virtual void bind() override;
 
     virtual void unbind() override;
+
+    virtual unsigned char dataFieldFlags() const override;
 
     virtual void link(IGeometryResourceUPtr resource);
 
@@ -52,12 +50,6 @@ public:
 
     virtual const std::vector<uint32_t>& indices() const;
 
-    virtual bool hasUVs() const;
-
-    virtual bool hasNormals() const;
-
-    virtual bool hasTangents() const;
-
 protected:
 
     const std::vector<Vertex> m_vertices;
@@ -68,7 +60,5 @@ protected:
 
     bool m_isBound = false;
 
-    const bool m_hasUVs;
-    const bool m_hasNormals;
-    const bool m_hasTangents;
+    const unsigned char m_dataFieldFlags;
 };

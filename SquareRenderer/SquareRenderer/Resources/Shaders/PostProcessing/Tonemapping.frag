@@ -5,7 +5,7 @@ in vec2 TexCoords;
 
 uniform sampler2D screenTexture;
 uniform float gamma = 2.2; // [1, 5]
-uniform float exposure = 1.0; // [0, 10]
+uniform float exposure = 2.0; // [0, 10]
 
 void main()
 { 

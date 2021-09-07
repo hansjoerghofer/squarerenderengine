@@ -4,6 +4,7 @@
 #include "Texture/TextureDefines.h"
 
 #include <string>
+#include <future>
 
 DECLARE_PTRS(Texture2D);
 DECLARE_PTRS(GraphicsAPI);
@@ -18,10 +19,19 @@ public:
 
     TextureImporter(GraphicsAPISPtr api);
 
+    ~TextureImporter();
+
     Texture2DSPtr importFromFile(
         const std::string& filePath,
         ImportFormat format = ImportFormat::Auto,
         TextureSampler sampler = TextureSampler());
+
+    Texture2DSPtr importFromFileAsync(
+        const std::string& filePath,
+        ImportFormat format = ImportFormat::Auto,
+        TextureSampler sampler = TextureSampler());
+
+    void waitForCompletion();
 
 private:
 
@@ -31,12 +41,21 @@ private:
         int height;
         int channels;
         bool isFloat;
+        bool sRGB;
         void* data;
     };
 
+    struct AsyncTask
+    {
+        Texture2DSPtr texture;
+        std::future<ImageWrapper> result;
+    };
+
+    std::vector<AsyncTask> m_runningTasks;
+
     GraphicsAPISPtr m_api;
 
-    ImageWrapper loadRawImageFile(const std::string& path, int desiredChannels = 0);
+    ImageWrapper loadRawImageFile(const std::string& path, ImportFormat format = ImportFormat::Auto) const;
 
 };
 

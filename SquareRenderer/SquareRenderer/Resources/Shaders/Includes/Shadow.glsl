@@ -121,15 +121,27 @@ float _shadowPCSSHammersley(in vec4 position, int index)
 
 float _shadow(in vec4 position, int index)
 {
-    int shadowIdx = _shadowMapIndex[index];
 
-    if (shadowIdx >= 0)
+#if SHADOW_HARD || SHADOW_PCF || SHADOW_PCSS
+
+    if (_shadowMapIndex[index] >= 0)
     {
-        //return _hardShadow(position, shadowIdx);
-        //return _shadowPCFHammersley(position, shadowIdx);
-        return _shadowPCSSHammersley(position, shadowIdx);
+    #if SHADOW_PCSS
+
+        return _shadowPCSSHammersley(position, _shadowMapIndex[index]);
+
+    #elif SHADOW_PCF
+
+        return _shadowPCFHammersley(position, _shadowMapIndex[index]);
+
+    #else
+
+        return _hardShadow(position, _shadowMapIndex[index]);
+
+    #endif
     }
     else
+#endif
     {
         return 1.0;
     }

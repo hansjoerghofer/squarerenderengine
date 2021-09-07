@@ -26,9 +26,9 @@ public:
 
     void addLight(ILightsourceSPtr light);
 
-    void setSkybox(CubemapSPtr cubemap);
+    void setSky(CubemapSPtr sky);
 
-    CubemapSPtr skybox() const;
+    CubemapSPtr sky() const;
 
     unsigned int nodeNum() const;
 
@@ -53,7 +53,7 @@ protected:
 
 	SceneNodeSPtr m_root;
 
-    CubemapSPtr m_skybox;
+    CubemapSPtr m_sky;
 
     std::vector<ILightsourceSPtr> m_lights;
 };

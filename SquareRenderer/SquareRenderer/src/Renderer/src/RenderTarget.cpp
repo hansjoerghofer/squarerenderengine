@@ -58,7 +58,7 @@ int RenderTarget::width() const
 	}
 
 	// compute the size of the selected level
-	return width * std::pow(0.5, m_level);
+	return static_cast<int>(width * std::pow(0.5, m_level));
 }
 
 int RenderTarget::height() const

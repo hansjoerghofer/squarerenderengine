@@ -1,0 +1,70 @@
+shaderRoot: Resources/Shaders/
+
+materials:
+ - name: Lit.BlinnPhong
+   defines: [ SHADOW_HARD ]
+   files:
+     - Lit/BlinnPhong.vert
+     - Lit/BlinnPhong.frag
+ - name: Lit.PBR
+   defines: [ SHADOW_PCF ]
+   files:
+     - Lit/PBR.vert
+     - Lit/PBR.frag
+ - name: Debug.Line
+   files:
+     - Line.vert
+     - Line.frag
+ - name: PP.Tonemapping
+   files:
+     - PostProcessing/Fullscreen.vert
+     - PostProcessing/Tonemapping.frag
+ - name: Util.ShadowMapping
+   files:
+     - Util/ShadowMapping.vert
+     - Util/ShadowMapping.frag
+ - name: Util.ProjectEqr2Cube
+   files:
+     - Util/Default.vert
+     - Util/Cubemap.geom
+     - Util/Eqr2Cube.frag
+ - name: Util.Skybox
+   files:
+     - Util/Skybox.vert
+     - Util/Skybox.frag
+ - name: Util.IntegratedBRDF
+   files:
+     - PostProcessing/Fullscreen.vert
+     - Util/IntegratedBRDF.frag
+ - name: Util.IBLDiffuse
+   files:
+     - Util/Default.vert
+     - Util/Cubemap.geom
+     - Util/IBLDiffuse.frag
+ - name: Util.IBLSpecular
+   files:
+     - Util/Default.vert
+     - Util/Cubemap.geom
+     - Util/IBLSpecular.frag
+ - name: Util.CombineChannels
+   files:
+     - PostProcessing/Fullscreen.vert
+     - Util/Combine.frag
+ - name: Util.VerticalBlur
+   defines: [ FILTER_VERTICAL ]
+   files:
+     - PostProcessing/Fullscreen.vert
+     - Util/Blur.frag
+ - name: Util.HorizontalBlur
+   defines: [ FILTER_HORIZONTAL ]
+   files:
+     - PostProcessing/Fullscreen.vert
+     - Util/Blur.frag
+ - name: Util.HighpassFilter
+   files:
+     - PostProcessing/Fullscreen.vert
+     - Util/HighpassFilter.frag
+ - name: PP.Blit
+   files:
+     - PostProcessing/Fullscreen.vert
+     - PostProcessing/Fullscreen.frag

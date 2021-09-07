@@ -2,6 +2,7 @@
 #include "Scene/SceneNode.h"
 #include "Scene/BoundingBox.h"
 #include "Scene/ILightsource.h"
+#include "Texture/Cubemap.h"
 
 Scene::Scene(SceneNodeSPtr root)
 	: m_root(root)
@@ -28,14 +29,14 @@ void Scene::addLight(ILightsourceSPtr light)
 	m_lights.push_back(light);
 }
 
-void Scene::setSkybox(CubemapSPtr cubemap)
+void Scene::setSky(CubemapSPtr sky)
 {
-	m_skybox = cubemap;
+	m_sky = sky;
 }
 
-CubemapSPtr Scene::skybox() const
+CubemapSPtr Scene::sky() const
 {
-	return m_skybox;
+	return m_sky;
 }
 
 unsigned int Scene::nodeNum() const

@@ -9,6 +9,8 @@
 #include <map>
 #include <regex>
 
+#define DEBUG_OUT_SHADERS
+
 static const std::map<std::string, ShaderType> s_extensionToShaderType =
 {
     { ".vert", ShaderType::Vertex },
@@ -34,11 +36,23 @@ static const std::regex s_uniformRegEx = std::regex("^.*uniform (\\w+) ([\\w_\\[
 static const std::regex s_rangeRegEx = std::regex("\\[\\s?([\\d\\.]+)\\s?,\\s?([\\d\\.]+)\\s?\\]"); // [x,y]
 static const std::regex s_hintRegEx = std::regex("\\[\\s?(\\w+)\\s?\\]"); // [white]
 
-ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
+std::string cacheKey(const std::string& filepath, const std::vector<std::string>& defines)
+{
+    std::stringstream ss;
+    ss << filepath;
+    for (const std::string& define : defines)
+    {
+        ss << "_" << define;
+    }
+    return ss.str();
+}
+
+ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath, const std::vector<std::string>& defines)
 {
     std::filesystem::path path(filepath);
 
-    const auto& foundShader = m_shaderCache.find(filepath);
+    const std::string cacheKeyStr = cacheKey(filepath, defines);
+    const auto& foundShader = m_shaderCache.find(cacheKeyStr);
     if (foundShader != m_shaderCache.end())
     {
         Logger::Info("Load shader from cache '%s'", filepath.c_str());
@@ -60,6 +74,7 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
     // reset the path stack
     m_pathStack = std::stack<std::filesystem::path>();
     m_tempUniformCache.clear();
+    m_shaderDefines = defines;
 
     // load the file
     std::stringstream content;
@@ -68,9 +83,15 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath)
         ShaderSourceSPtr shader = std::make_shared<ShaderSource>(
             type, std::move(content.str()), m_tempUniformCache);
 
-        m_shaderCache[filepath] = shader;
+        m_shaderCache[cacheKeyStr] = shader;
 
         Logger::Info("Load shader from file '%s'", filepath.c_str());
+
+#ifdef DEBUG_OUT_SHADERS
+        std::ofstream out("Resources/Shaders/Cache/" + cacheKey(path.filename().string(), defines) + ".parsed.glsl");
+        out << content.str();
+        out.close();
+#endif
 
         return shader;
     }
@@ -87,7 +108,7 @@ bool ShaderParser::readFile(const std::filesystem::path& filepath, std::stringst
     std::string pathStr = path.string();
 
     // check if file already exists in cache
-    const auto& found = m_fileCache.find(pathStr);
+    const auto& found = m_fileCache.find(cacheKey(pathStr, m_shaderDefines));
     if (found != m_fileCache.end())
     {
         out << found->second;
@@ -127,7 +148,7 @@ bool ShaderParser::readFile(const std::filesystem::path& filepath, std::stringst
 
     // cache file contents
     m_fileCache.emplace(std::make_pair(
-        std::move(pathStr), std::move(contents)));
+        cacheKey(pathStr, m_shaderDefines), std::move(contents)));
 
     return true;
 }
@@ -181,10 +202,20 @@ bool ShaderParser::handleDefine(const std::string& line, std::stringstream& out)
         {
             out << "// << include " << value << '\n';
         }
-        return true;
+        return ok;
     }
-
-    out << line << '\n';
+    else if (!m_shaderDefines.empty() && token == "#version")
+    {
+        out << line << "\n\n";
+        for (const std::string& shaderDefine : m_shaderDefines)
+        {
+            out << "#define " << shaderDefine << " 1" << '\n';
+        }
+    }
+    else
+    {
+        out << line << '\n';
+    }
     return true;
 }
 

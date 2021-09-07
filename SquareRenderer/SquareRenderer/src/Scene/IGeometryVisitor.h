@@ -12,6 +12,8 @@ class IGeometryVisitor
 {
 public:
 
+	virtual ~IGeometryVisitor() = 0 {};
+
 	virtual void visit(Mesh& mesh) = 0;
 
 	virtual void visit(PrimitiveSet& primitiveSet) = 0;

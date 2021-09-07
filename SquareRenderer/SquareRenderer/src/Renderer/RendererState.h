@@ -72,7 +72,7 @@ struct RendererState
 
     bool seamlessCubemapFiltering = false;
 
-    static RendererState Blit()
+    constexpr static RendererState Blit()
     {
         RendererState state;
         state.clearColor = true;

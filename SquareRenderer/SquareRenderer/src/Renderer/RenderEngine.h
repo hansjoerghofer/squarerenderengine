@@ -11,19 +11,21 @@ DECLARE_PTRS(Scene);
 DECLARE_PTRS(Camera);
 DECLARE_PTRS(GraphicsAPI);
 DECLARE_PTRS(RenderEngine);
+DECLARE_PTRS(Material);
 DECLARE_PTRS(MaterialLibrary);
 DECLARE_PTRS(ILightsource);
 DECLARE_PTRS(IRenderTarget);
 DECLARE_PTRS(RenderTarget);
 DECLARE_PTRS(IDrawable);
-DECLARE_PTRS(RenderPass);
 DECLARE_PTRS(Texture2D);
 DECLARE_PTRS(Cubemap);
+DECLARE_PTRS(IRenderPass);
 
 template<typename T>
 class UniformBlockData;
 struct CameraUniformBlock;
 struct LightsUniformBlock;
+struct RenderCommand;
 
 struct ShadowData
 {
@@ -61,7 +63,7 @@ public:
 
 	void setupGizmos(const std::string& programName);
 
-	const std::list<RenderPassSPtr>& renderPasses() const;
+	const std::list<IRenderPassSPtr>& renderPasses() const;
 
 	void update(double deltaTime);
 
@@ -79,13 +81,22 @@ public:
 	
 	void generateIntegratedBRDF(Texture2DSPtr integratedBRDF);
 
-protected:
+	void packTextures(
+		Texture2DSPtr target, 
+		Texture2DSPtr sourceRed, 
+		Texture2DSPtr sourceGreen, 
+		Texture2DSPtr sourceBlue, 
+		Texture2DSPtr sourceAlpha);
 
-	void render(const RenderPass&);
+protected:
 
 	void setupPostProcessing();
 
 	void setupShadowMapping();
+
+	RenderTargetSPtr screenSpaceTarget(float scale);
+
+	ITextureSPtr getLastColorTarget(int slotIndex = 0) const;
 
 	GraphicsAPISPtr m_api;
 
@@ -112,7 +123,7 @@ protected:
 
 	double m_scale = 1.0;
 
-	std::list<RenderPassSPtr> m_renderPassList;
+	std::list<IRenderPassSPtr> m_renderPassList;
 
 	std::unordered_map<ILightsourceSPtr, ShadowData> m_shadowData;
 

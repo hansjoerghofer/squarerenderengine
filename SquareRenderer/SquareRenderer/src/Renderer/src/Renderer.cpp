@@ -84,6 +84,8 @@ inline GLboolean translate(bool flag)
 class RenderVisitor : public IGeometryVisitor
 {
 public:
+    virtual ~RenderVisitor() {}
+
     virtual void visit(Mesh& mesh) override
     {
         const GLsizei indexCount = static_cast<GLsizei>(mesh.indexCount());
@@ -118,6 +120,22 @@ void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
     mat->unbind();
 
     GraphicsAPICheckError();
+}
+
+void Renderer::blit(IRenderTargetSPtr source, IRenderTargetSPtr target, TextureFilter filter, bool color, bool depth, bool stencil)
+{
+    GLbitfield blitBits = 0;
+    blitBits |= color ? GL_COLOR_BUFFER_BIT : 0;
+    blitBits |= depth ? GL_DEPTH_BUFFER_BIT : 0;
+    blitBits |= stencil ? GL_STENCIL_BUFFER_BIT : 0;
+
+    const GLenum filterEnum = filter == TextureFilter::Linear ? GL_LINEAR : GL_NEAREST;
+
+    glBlitNamedFramebuffer(
+        source->handle(), target->handle(),
+        0, 0, source->width(), source->height(),
+        0, 0, target->width(), target->height(),
+        blitBits, filterEnum);
 }
 
 void Renderer::setTarget(IRenderTargetSPtr target)

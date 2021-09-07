@@ -4,7 +4,7 @@
 #include "Common/Logger.h"
 #include "Application/GL.h"
 #include "Renderer/RendererState.h"
-#include "Scene/IGeometryVisitor.h"
+#include "Texture/TextureDefines.h"
 
 #include <vector>
 
@@ -15,6 +15,7 @@ DECLARE_PTRS(ShaderProgram);
 DECLARE_PTRS(Renderer);
 DECLARE_PTRS(ITexture);
 DECLARE_PTRS(IRenderTarget);
+DECLARE_PTRS(IGeometryVisitor);
 
 class Renderer
 {
@@ -23,6 +24,12 @@ public:
 	Renderer();
 
 	void render(IGeometrySPtr geo, MaterialSPtr mat);
+
+	void blit(IRenderTargetSPtr source, IRenderTargetSPtr target, 
+		TextureFilter filter = TextureFilter::Linear,
+		bool color = true, 
+		bool depth = false, 
+		bool stencil = false);
 
 	void setTarget(IRenderTargetSPtr target);
 

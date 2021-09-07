@@ -33,6 +33,8 @@ public:
 
 	void link(ITextureResourceUPtr resource);
 
+	virtual void update(int width, int height, TextureFormat format);
+
 private:
 
 	int m_width;

@@ -1,14 +1,16 @@
 #version 450 core
 
+out vec4 FragColor;
+
 in vec3 uvs;
 
 uniform samplerCube skybox;
 
 void main()
 {
-    gl_FragColor = texture(skybox, uvs);
-    //gl_FragColor = mix(vec4(1,0,0,1), texture(skybox, uvs), 0.1);
+    FragColor = texture(skybox, uvs);
+    //FragColor = mix(vec4(1,0,0,1), texture(skybox, uvs), 0.1);
 
     // DEBUG MIP levels
-    //gl_FragColor = textureLod(skybox, uvs, 0.8);
+    //FragColor = textureLod(skybox, uvs, 0.8);
 }

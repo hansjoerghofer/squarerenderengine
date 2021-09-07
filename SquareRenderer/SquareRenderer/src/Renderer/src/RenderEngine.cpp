@@ -1,7 +1,10 @@
 #include "Renderer/RenderEngine.h"
 #include "Renderer/RenderTarget.h"
 #include "Renderer/DepthBuffer.h"
-#include "Renderer/RenderPass.h"
+#include "Renderer/IRenderPass.h"
+#include "Renderer/GeometryRenderPass.h"
+#include "Renderer/ScreenSpaceRenderPass.h"
+#include "Renderer/BloomRenderPass.h"
 
 #include "Common/Logger.h"
 #include "Common/Timer.h"
@@ -92,8 +95,11 @@ void RenderEngine::setScene(SceneSPtr scene)
 {
 	m_scene = scene;
 
-	// TODO check if scene supports IBL
-	m_ibl = generateIBL(m_scene->skybox());
+
+	if (m_scene->sky())
+	{
+		m_ibl = generateIBL(std::static_pointer_cast<Cubemap>(m_scene->sky()));
+	}
 
 	rebuildCommandList();
 }
@@ -116,25 +122,9 @@ void RenderEngine::render()
 {
 	for (const auto& pass : m_renderPassList)
 	{
-		render(*pass);
-	}
-}
-
-void RenderEngine::render(const RenderPass& pass)
-{
-	m_renderer->setTarget(pass.target());
-
-	m_renderer->applyState(pass.rendererState());
-
-	for (const auto& elem : pass.drawables())
-	{
-		// TODO override logic!
-		MaterialSPtr mat = pass.material() ? pass.material() : elem->material();
-		if (mat)
+		if (pass->isEnabled())
 		{
-			elem->preRender(mat);
-			m_renderer->render(elem->geometry(), mat);
-			elem->postRender();
+			pass->render(*m_renderer);
 		}
 	}
 }
@@ -195,7 +185,7 @@ void RenderEngine::rebuildCommandList()
 	{
 		setupShadowMapping();
 
-		RenderCommand cmd;
+		GeometryRenderPass::Data cmd;
 		cmd.name = "Opaque Scene";
 		cmd.target = m_gBuffer;
 		cmd.state.clearColor = true;
@@ -247,15 +237,15 @@ void RenderEngine::rebuildCommandList()
 
 		// opaque scene rendering
 		m_renderPassList.emplace_back(
-			new RenderPass(std::move(cmd)));
+			new GeometryRenderPass(std::move(cmd)));
 
 		// skybox rendering
 		MaterialSPtr skyboxMat = m_matlib->instanciate("Util.Skybox");
-		if (skyboxMat && m_scene->skybox())
+		if (skyboxMat && m_scene->sky())
 		{
-			skyboxMat->setUniform("skybox", m_scene->skybox());
+			skyboxMat->setUniform("skybox", m_scene->sky());
 
-			RenderCommand cmd2;
+			GeometryRenderPass::Data cmd2;
 			cmd2.name = "Skybox";
 			cmd2.target = m_gBuffer;
 			cmd2.state.clearColor = false;
@@ -271,7 +261,7 @@ void RenderEngine::rebuildCommandList()
 				cmd2.drawables.emplace_back(new Primitive(geometry, skyboxMat));
 
 				m_renderPassList.emplace_back(
-					new RenderPass(std::move(cmd2)));
+					new GeometryRenderPass(std::move(cmd2)));
 			}			
 		}
 	}
@@ -283,7 +273,7 @@ void RenderEngine::rebuildCommandList()
 		// TODO use gBuffer depth as depth buffer for
 		// occluded bounding boxes!
 
-		RenderCommand cmd;
+		GeometryRenderPass::Data cmd;
 		cmd.name = "Gizmos";
 		cmd.target = m_outputTarget;
 		cmd.state.clearColor = false;
@@ -293,7 +283,7 @@ void RenderEngine::rebuildCommandList()
 		cmd.drawables.push_back(m_gizmos);
 
 		m_renderPassList.emplace_back(
-			new RenderPass(std::move(cmd)));
+			new GeometryRenderPass(std::move(cmd)));
 	}
 }
 
@@ -322,7 +312,7 @@ void RenderEngine::setupGizmos(const std::string& programName)
 		}
 
 		//bounding boxes
-		auto t = m_scene->traverser();
+		/*auto t = m_scene->traverser();
 		while (t.hasNext())
 		{
 			SceneNodeSPtr node = t.next();
@@ -336,7 +326,7 @@ void RenderEngine::setupGizmos(const std::string& programName)
 		}
 
 		const auto aabbGizmo = GizmoHelper::createBoundingBox(m_scene->sceneBounds());
-		lines.insert(lines.end(), aabbGizmo.begin(), aabbGizmo.end());
+		lines.insert(lines.end(), aabbGizmo.begin(), aabbGizmo.end());*/
 	}
 
 	std::vector<Vertex> vertices = GizmoHelper::linesToPrimitives(lines);
@@ -362,24 +352,99 @@ void RenderEngine::setupPostProcessing()
 		return;
 	}
 
-	MaterialSPtr tonemappingMat = m_matlib->instanciate("PP.Tonemapping", "Tonemapping");
-	if (tonemappingMat)
+	m_renderPassList.emplace_back(new BloomRenderPass(m_api, m_matlib, m_fullscreenTriangle, m_gBuffer));
+
+	const float bloomScale = 1.f;// m_scale;
+	glm::vec4 dim = glm::vec4();
+
+	// bloom
+	if(false)
 	{
-		tonemappingMat->setUniform("screenTexture", m_gBuffer->colorTargets()[0]);
+		RenderTargetSPtr rt = screenSpaceTarget(bloomScale);
 
-		RenderCommand cmd;
-		cmd.name = "Tonemapping";
-		cmd.target = m_outputTarget;
+		dim.x = rt->width();
+		dim.y = rt->height();
+		dim.z = 1.f / rt->width();
+		dim.w = 1.f / rt->height();
 
-		//cmd.state.writeDepth = false; // TODO check!
-		cmd.state.clearDepth = false;
-		cmd.state.depthTestMode = DepthTest::None;
+		MaterialSPtr mat = m_matlib->instanciate("Util.HighpassFilter", "Highpass");
+		mat->setUniform("image", getLastColorTarget());
+		mat->setUniform("threshold", 1.f);
 
-		cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, tonemappingMat));
-
-		m_renderPassList.emplace_back(
-			new RenderPass(std::move(cmd)));
+		m_renderPassList.emplace_back(new ScreenSpaceRenderPass("Blur", m_fullscreenTriangle, mat, rt));
 	}
+
+	if(false)
+	{
+		RenderTargetSPtr ping = screenSpaceTarget(bloomScale);
+		RenderTargetSPtr pong = screenSpaceTarget(bloomScale);
+
+		MaterialSPtr matV = m_matlib->instanciate("Util.VerticalBlur");
+		matV->setUniform("image", getLastColorTarget());
+		matV->setUniform("dim", dim);
+		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+			"VerticalBlur_0", m_fullscreenTriangle, matV, ping));
+
+		MaterialSPtr matH = m_matlib->instanciate("Util.HorizontalBlur");
+		matH->setUniform("image", getLastColorTarget());
+		matH->setUniform("dim", dim);
+		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+			"HorizontalBlur_0", m_fullscreenTriangle, matH, pong));
+
+		for (int i = 1; i < 4; ++i)
+		{
+			// vertical
+			MaterialSPtr mat1 = m_matlib->instanciate("Util.VerticalBlur");
+			mat1->setUniform("image", getLastColorTarget());
+			mat1->setUniform("dim", dim);
+			m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+				"VerticalBlur_" + std::to_string(i), m_fullscreenTriangle, mat1, ping));
+
+			// horizontal
+			MaterialSPtr mat2 = m_matlib->instanciate("Util.HorizontalBlur");
+			mat2->setUniform("image", getLastColorTarget());
+			mat2->setUniform("dim", dim);
+			m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+				"HorizontalBlur_" + std::to_string(i), m_fullscreenTriangle, mat2, pong));
+		}
+	}
+
+	{
+		MaterialSPtr mat = m_matlib->instanciate("PP.Tonemapping", "Tonemapping");
+		mat->setUniform("screenTexture", getLastColorTarget());
+
+		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+			"Tonemapping", m_fullscreenTriangle, mat, m_outputTarget));
+	}
+}
+
+RenderTargetSPtr RenderEngine::screenSpaceTarget(float scale)
+{
+	TextureSampler sampler;
+	sampler.mipmapping = false;
+	RenderTargetSPtr rt = std::make_unique<RenderTarget>(
+		std::make_shared<Texture2D>(
+			static_cast<int>(m_outputTarget->width() * scale),
+			static_cast<int>(m_outputTarget->height() * scale),
+			TextureFormat::RGBAFloat, sampler));
+	
+	if (m_api->allocate(rt))
+	{
+		return rt;
+	}
+	else
+	{
+		Logger::Error("Could not allocate screen render target");
+		return nullptr;
+	}
+}
+
+ITextureSPtr RenderEngine::getLastColorTarget(int slotIndex) const
+{
+	RenderTargetSPtr previousTarget = std::static_pointer_cast<RenderTarget>(
+		m_renderPassList.back()->target());
+
+	return previousTarget->colorTargets()[slotIndex];
 }
 
 IRenderTargetSPtr RenderEngine::renderTarget() const
@@ -392,7 +457,7 @@ void RenderEngine::setRenderingScale(double scale)
 	m_scale = scale;
 }
 
-const std::list<RenderPassSPtr>& RenderEngine::renderPasses() const
+const std::list<IRenderPassSPtr>& RenderEngine::renderPasses() const
 {
 	return m_renderPassList;
 }
@@ -469,7 +534,7 @@ void RenderEngine::setupShadowMapping()
 		MaterialSPtr shadowMat = m_matlib->instanciate("Util.ShadowMapping");
 		shadowMat->setUniform("worldToLight", worldToLight);
 
-		RenderCommand cmd;
+		GeometryRenderPass::Data cmd;
 		cmd.name = "ShadowMapping";
 		cmd.target = shadowMapTarget;
 		cmd.state.clearColor = false;
@@ -477,8 +542,7 @@ void RenderEngine::setupShadowMapping()
 		cmd.state.depthOffset = glm::vec2(4., 1.);
 		cmd.overrideMaterial = shadowMat;
 		cmd.drawables = shadowCasters;
-		m_renderPassList.emplace_back(
-			new RenderPass(std::move(cmd)));
+		m_renderPassList.emplace_back(new GeometryRenderPass(std::move(cmd)));
 
 		ShadowData sData = ShadowData();
 		sData.index = index;
@@ -601,7 +665,7 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 		projectionMat->setUniform("VP", CUBE_FACE_VP[i], i);
 	}
 
-	RenderCommand cmd;
+	GeometryRenderPass::Data cmd;
 	cmd.name = "EquirectangularToCubemap";
 	cmd.target = rt;
 	cmd.drawables.emplace_back(new Primitive(cubeGeom, projectionMat));
@@ -612,7 +676,8 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 	cmd.state.depthTestMode = DepthTest::Equal;
 	cmd.state.writeDepth = false;
 
-	render(RenderPass(std::move(cmd)));
+	const auto pass = GeometryRenderPass(std::move(cmd));
+	pass.render(*m_renderer);
 
 	m_renderer->regenerateMipmaps(target);
 }
@@ -669,7 +734,7 @@ void RenderEngine::hdriToDiffuseIrradiance(CubemapSPtr hdri, CubemapSPtr diffIrr
 		mat->setUniform("VP", CUBE_FACE_VP[i], i);
 	}
 
-	RenderCommand cmd;
+	GeometryRenderPass::Data cmd;
 	cmd.name = "HDRI2DiffuseIrradiance";
 	cmd.target = rt;
 	cmd.drawables.emplace_back(new Primitive(cubeGeom, mat));
@@ -680,7 +745,8 @@ void RenderEngine::hdriToDiffuseIrradiance(CubemapSPtr hdri, CubemapSPtr diffIrr
 	cmd.state.clearDepth = false;
 	cmd.state.seamlessCubemapFiltering = true;
 
-	render(RenderPass(std::move(cmd)));
+	const auto pass = GeometryRenderPass(std::move(cmd));
+	pass.render(*m_renderer);
 }
 
 void RenderEngine::hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIrradiance)
@@ -706,7 +772,7 @@ void RenderEngine::hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIr
 		mat->setUniform("VP", CUBE_FACE_VP[i], i);
 	}
 
-	RenderCommand cmd;
+	GeometryRenderPass::Data cmd;
 	cmd.name = "HDRI2DiffuseIrradiance";
 	cmd.drawables.emplace_back(new Primitive(cubeGeom, mat));
 
@@ -731,7 +797,8 @@ void RenderEngine::hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIr
 		}
 		cmd.target = rt;
 
-		render(RenderPass(cmd));
+		const auto pass = GeometryRenderPass(cmd);
+		pass.render(*m_renderer);
 	}
 }
 
@@ -749,12 +816,50 @@ void RenderEngine::generateIntegratedBRDF(Texture2DSPtr integratedBRDF)
 		return;
 	}
 
-	RenderCommand cmd;
+	GeometryRenderPass::Data cmd;
 	cmd.name = "GenerateIntegratedBRDF";
 	cmd.target = rt;
 	cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, brdfMat));
 
 	cmd.state = RendererState::Blit();
 
-	render(RenderPass(std::move(cmd)));
+	const auto pass = GeometryRenderPass(std::move(cmd));
+	pass.render(*m_renderer);
+}
+
+void RenderEngine::packTextures(
+	Texture2DSPtr target, 
+	Texture2DSPtr sourceRed, 
+	Texture2DSPtr sourceGreen, 
+	Texture2DSPtr sourceBlue, 
+	Texture2DSPtr sourceAlpha)
+{
+	RenderTargetSPtr rt = std::make_shared<RenderTarget>(target);
+	if (!m_api->allocate(rt))
+	{
+		return;
+	}
+
+	MaterialSPtr mat = m_matlib->instanciate("Util.CombineChannels");
+	if (!mat)
+	{
+		return;
+	}
+
+	mat->setUniform("redChannel", sourceRed);
+	mat->setUniform("greenChannel", sourceGreen);
+	mat->setUniform("blueChannel", sourceBlue);
+	mat->setUniform("alphaChannel", sourceAlpha);
+
+	GeometryRenderPass::Data cmd;
+	cmd.name = "CombineTextureChannels";
+	cmd.target = rt;
+	cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, mat));
+
+	cmd.state = RendererState::Blit();
+
+	const auto pass = GeometryRenderPass(std::move(cmd));
+	pass.render(*m_renderer);
+
+	m_renderer->regenerateMipmaps(target);
 }

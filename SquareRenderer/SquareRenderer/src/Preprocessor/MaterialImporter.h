@@ -20,7 +20,10 @@ public:
 
 	MaterialLibraryUPtr importFromFile(const std::string& filepath);
 
-	ShaderProgramSPtr loadProgramFromFiles(const std::string& name, const std::vector<std::string>& shaderPaths);
+	ShaderProgramSPtr loadProgramFromFiles(
+		const std::string& name, 
+		const std::vector<std::string>& shaderPaths,
+		const std::vector<std::string>& defines = {});
 
 private:
 

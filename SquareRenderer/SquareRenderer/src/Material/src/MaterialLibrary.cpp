@@ -68,6 +68,11 @@ MaterialSPtr MaterialLibrary::instanciate(const std::string& programName, const 
 	ShaderProgramSPtr program = findProgram(programName);
 	if (program)
 	{
+		if (m_namedInstances.find(instanceName) != m_namedInstances.end())
+		{
+			throw std::invalid_argument("Material instance name is already known!");
+		}
+
 		MaterialSPtr mat = MaterialSPtr(new Material(instanceName, program));
 
 		m_namedInstances[instanceName] = mat;

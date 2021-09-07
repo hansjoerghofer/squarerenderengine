@@ -20,13 +20,13 @@ struct Vertex
     constexpr static unsigned char DATA_FULL        = DATA_UV | DATA_NORMAL | DATA_TANGENT;
 };
 
-
-
 DECLARE_PTRS(IGeometry);
 
 class IGeometry
 {
 public:
+
+    virtual ~IGeometry() = 0 {};
 
     virtual void accept(IGeometryVisitor& visitor) = 0;
 

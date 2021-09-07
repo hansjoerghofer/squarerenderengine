@@ -15,17 +15,19 @@ struct aiMesh;
 struct aiScene;
 struct aiNode;
 
-class SceneLoader
+class ModelLoader
 {
 public:
 
-	SceneLoader(MaterialLibrarySPtr matLib);
+	ModelLoader(MaterialLibrarySPtr matLib);
 
-	~SceneLoader();
+	~ModelLoader();
 
 	void setDefaultProgramName(const std::string& defaultProgramName);
 
-	SceneUPtr loadFromFile(const std::string& filepath);
+	void setUseExistingMaterials(bool useExisting);
+
+	SceneNodeSPtr loadFromFile(const std::string& filepath);
 
 private:
 
@@ -41,5 +43,7 @@ private:
 	MaterialLibrarySPtr m_matLib;
 
 	std::string m_defaultProgramName;
+
+	bool m_useExistingMaterials = true;
 };
 

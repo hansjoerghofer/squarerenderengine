@@ -1,7 +1,7 @@
 #include "Common/Logger.h"
 #include "Common/Math3D.h"
 
-#include "Preprocessor/SceneLoader.h"
+#include "Preprocessor/ModelLoader.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
 #include "Scene/Mesh.h"
@@ -48,16 +48,6 @@ inline void Map(const aiQuaternion& source, glm::quat& target)
     target.z = source.z;
 }
 
-MaterialSPtr SceneLoader::processMaterial(const aiMaterial& mat)
-{
-    aiString name;
-    mat.Get(AI_MATKEY_NAME, name);
-
-    Logger::Info("Process Material '%s'", name.C_Str());
-
-    return m_matLib->instanciate(m_defaultProgramName, std::string(name.C_Str()));
-}
-
 void LogMatrix(const std::string& description, const glm::mat4& m)
 {
     Logger::Debug("Matrix: %s\n"
@@ -73,7 +63,25 @@ void LogMatrix(const std::string& description, const glm::mat4& m)
     );
 }
 
-MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
+MaterialSPtr ModelLoader::processMaterial(const aiMaterial& mat)
+{
+    aiString name;
+    mat.Get(AI_MATKEY_NAME, name);
+
+    Logger::Info("Process Material '%s'", name.C_Str());
+
+    const std::string materialName = std::string(name.C_Str());
+
+    MaterialSPtr existing;
+    if (m_useExistingMaterials)
+    {
+        existing = m_matLib->findMaterial(materialName);
+    }
+    
+    return existing ? existing : m_matLib->instanciate(m_defaultProgramName, materialName);
+}
+
+MeshSPtr ModelLoader::processMesh(const aiMesh& mesh)
 {
     if ((mesh.mPrimitiveTypes & aiPrimitiveType_TRIANGLE) == 0
         || mesh.mNumFaces == 0
@@ -101,15 +109,15 @@ MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
         
         Map(mesh.mVertices[i], vertex.position);
 
-        if (dataFieldFlags & Vertex::DATA_UV != 0)
+        if ((dataFieldFlags & Vertex::DATA_UV) != 0)
         {
             Map(mesh.mTextureCoords[0][i], vertex.uv);
         }
-        if (dataFieldFlags & Vertex::DATA_NORMAL != 0)
+        if ((dataFieldFlags & Vertex::DATA_NORMAL) != 0)
         {
             Map(mesh.mNormals[i], vertex.normal);
         }
-        if (dataFieldFlags & Vertex::DATA_TANGENT != 0)
+        if ((dataFieldFlags & Vertex::DATA_TANGENT) != 0)
         {
             Map(mesh.mTangents[i], vertex.tangent);
         }
@@ -139,7 +147,7 @@ MeshSPtr SceneLoader::processMesh(const aiMesh& mesh)
     return std::make_shared<Mesh>(std::move(vertices), std::move(indices), dataFieldFlags);
 }
 
-SceneNodeSPtr SceneLoader::processNode(
+SceneNodeSPtr ModelLoader::processNode(
     const aiNode& currentNode,
     const std::vector<MaterialSPtr>& materialSet,
     const std::vector<std::pair<MeshSPtr, unsigned int>>& meshSet)
@@ -190,21 +198,26 @@ SceneNodeSPtr SceneLoader::processNode(
     return newNode;
 }
 
-SceneLoader::SceneLoader(MaterialLibrarySPtr matLib)
+ModelLoader::ModelLoader(MaterialLibrarySPtr matLib)
     : m_matLib(matLib)
 {
 }
 
-SceneLoader::~SceneLoader()
+ModelLoader::~ModelLoader()
 {
 }
 
-void SceneLoader::setDefaultProgramName(const std::string& defaultProgramName)
+void ModelLoader::setDefaultProgramName(const std::string& defaultProgramName)
 {
     m_defaultProgramName = defaultProgramName;
 }
 
-SceneUPtr SceneLoader::loadFromFile(const std::string& filepath)
+void ModelLoader::setUseExistingMaterials(bool useExisting)
+{
+    m_useExistingMaterials = useExisting;
+}
+
+SceneNodeSPtr ModelLoader::loadFromFile(const std::string& filepath)
 {
     Assimp::Importer importer;
     importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, 0
@@ -251,18 +264,5 @@ SceneUPtr SceneLoader::loadFromFile(const std::string& filepath)
 
     const aiNode* importNode = aiScene->mRootNode;
 
-    SceneNodeSPtr rootNode = processNode(*importNode,
-        materialSet, meshSet);
-
-    SceneUPtr scene;
-    if (rootNode)
-    {
-        // scale root
-        //rootNode->setLocalTransform(glm::scale(rootNode->localTransform(), glm::vec3(0.1f)));
-        //rootNode->setLocalTransform(glm::scale(rootNode->localTransform(), glm::vec3(0.001f)));
-
-        scene = std::make_unique<Scene>(rootNode);
-    }
-    
-	return scene;
+    return processNode(*importNode, materialSet, meshSet);
 }

@@ -15,7 +15,7 @@ class ShaderParser
 {
 public:
 
-	ShaderSourceSPtr loadFromFile(const std::string& filepath);
+	ShaderSourceSPtr loadFromFile(const std::string& filepath, const std::vector<std::string>& defines = {});
 
 protected:
 
@@ -38,5 +38,7 @@ protected:
 	std::unordered_map<std::string, ShaderSourceSPtr> m_shaderCache;
 
 	std::vector<UniformMetaInfo> m_tempUniformCache;
+
+	std::vector<std::string> m_shaderDefines;
 };
 

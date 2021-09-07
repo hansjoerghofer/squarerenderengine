@@ -65,6 +65,15 @@ void Texture2D::link(ITextureResourceUPtr resource)
 	m_linkedResource = std::move(resource);
 }
 
+void Texture2D::update(int width, int height, TextureFormat format)
+{
+	m_width = width;
+	m_height = height;
+	m_format = format;
+
+	m_linkedResource.reset();
+}
+
 SharedResource::Handle Texture2D::handle() const
 {
 	if (m_linkedResource)

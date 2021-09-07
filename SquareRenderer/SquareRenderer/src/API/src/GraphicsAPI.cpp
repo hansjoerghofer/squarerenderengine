@@ -914,6 +914,8 @@ GraphicsAPI::~GraphicsAPI()
 class GeometryAllocVisitor : public IGeometryVisitor
 {
 public:
+    virtual ~GeometryAllocVisitor() {};
+
     void visit(Mesh& mesh) override
     {
         if (mesh.linked())

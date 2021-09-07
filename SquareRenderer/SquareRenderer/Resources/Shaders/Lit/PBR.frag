@@ -22,14 +22,12 @@ layout (location = 0) out vec4 OutputShadedRoughness;
 
 // uniforms
 uniform sampler2D albedoTexture; // [white]
-uniform sampler2D metallicTexture; // [white]
-uniform sampler2D roughnessTexture; // [white]
-uniform sampler2D aoTexture; // [white]
+uniform sampler2D pbrAttributesTexture; // [white]
 uniform sampler2D normalMap; // [normal]
 
 uniform vec4 albedoColor = vec4(1,1,1,1);
-uniform float metallicFactor = 0.5; // [0, 1]
-uniform float roughnessFactor = 0.5; // [0, 1]
+uniform float metallicFactor = 1; // [0, 1]
+uniform float roughnessFactor = 1; // [0, 1]
 uniform float aoFactor = 1; // [0, 1]
 
 uniform sampler2D   brdfLUT;
@@ -84,9 +82,11 @@ void main()
     
     Material mat;
     mat.albedo = cAlbedo.rgb;
-    mat.metallic = metallicFactor * texture(metallicTexture, IN.uv).r;
-    mat.roughness = roughnessFactor * texture(roughnessTexture, IN.uv).r;
-    mat.ao = aoFactor * texture(aoTexture, IN.uv).r;
+
+    vec4 pbrAttr = texture(pbrAttributesTexture, IN.uv);
+    mat.metallic = metallicFactor * pbrAttr.r;
+    mat.roughness = roughnessFactor * pbrAttr.g;
+    mat.ao = aoFactor * pbrAttr.b;
 
     vec3 P = IN.pFragmentWS;
     vec3 N = sampleNormal();
@@ -142,10 +142,11 @@ void main()
         cLight += (kD * mat.albedo / PI + specular) * radiance * NdotL * visibility;
     }
 
-    vec3 cAmbient = IBL(N, V, R, F0, mat) * mat.albedo;
+    vec3 cAmbient = IBL(N, V, R, F0, mat) * mat.ao;
 
     vec3 cShaded = cLight + cAmbient;
 
     OutputShadedRoughness = vec4(cShaded, 1);//mat.roughness);
+    //OutputShadedRoughness = vec4(mat.ao, mat.ao, mat.ao, 1);//mat.roughness);
     //OutputNormalDepth = vec4(N.xyz, gl_FragCoord.z);
 }

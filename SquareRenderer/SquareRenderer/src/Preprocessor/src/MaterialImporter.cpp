@@ -8,6 +8,8 @@
 #include "Material/ShaderProgram.h"
 #include "Texture/Texture2D.h"
 
+#include <yaml-cpp/yaml.h>
+
 #include <fstream>
 #include <exception>
 #include <filesystem>
@@ -32,11 +34,11 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
     }
 
     // open file
-    std::ifstream file(path.c_str());
+    /*std::ifstream file(path.c_str());
     if (!file.is_open())
     {
         throw std::runtime_error("Failed to open file.");
-    }
+    }*/
 
     MaterialLibraryUPtr matLib = MaterialLibrary::create();
 
@@ -65,9 +67,67 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
         matLib->registerDefaultTexture("normal", defaultNormalTex);
     }
 
-    std::string root = path.parent_path().string() + "/";
+    YAML::Node config = YAML::LoadFile(filepath);
 
-    std::string line;
+    //TODO use std::filesystem::path::preferred_separator ?
+    //const std::string configRoot = std::filesystem::absolute(path).parent_path().string() + "/";
+    
+    const std::string shaderRoot = config["shaderRoot"].as<std::string>();
+
+    for (const auto& material : config["materials"])
+    {
+        const std::string programName = material["name"].as<std::string>();
+
+        std::vector<std::string> defines;
+        for (const auto& defineNode : material["defines"])
+        {
+            defines.push_back(defineNode.as<std::string>());
+        }
+
+        std::vector<std::string> shaderPaths;
+        for (const auto& pathNode : material["files"])
+        {
+            const std::string shaderPath = pathNode.as<std::string>();
+            if (!shaderPath.empty())
+            {
+                shaderPaths.push_back(shaderRoot + shaderPath);
+            }  
+        }
+
+        if (shaderPaths.empty()) continue;
+
+        ShaderProgramSPtr program = loadProgramFromFiles(programName, shaderPaths, defines);
+        
+        if (!program) continue;
+
+        matLib->registerProgram(program);
+
+        // set defaults from shader meta information
+        for (const auto& [uniformName, metaInfo] : program->uniformMetaInfo())
+        {
+            switch (metaInfo.type)
+            {
+            case UniformType::Float:
+            case UniformType::Int:
+            case UniformType::Vec4:
+            case UniformType::Mat4:
+                program->setUniformDefault(uniformName, UniformValue(metaInfo.defaultValue));
+                break;
+            case UniformType::Texture2D:
+            case UniformType::Cubemap:
+            {
+                ITextureSPtr tex = matLib->findDefaultTexture(metaInfo.hint);
+                if (tex)
+                {
+                    program->setUniformDefault(uniformName, tex);
+                }
+            }
+            }
+        }
+    }
+
+
+    /*std::string line;
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
@@ -115,18 +175,20 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
             }
             }
         }
-    }
+    }*/
 
     return matLib;
 }
 
 ShaderProgramSPtr MaterialImporter::loadProgramFromFiles(
-    const std::string& name, const std::vector<std::string>& shaderPaths)
+    const std::string& name, 
+    const std::vector<std::string>& shaderPaths,
+    const std::vector<std::string>& defines )
 {
     ShaderProgramSPtr program = std::make_shared<ShaderProgram>(name);
     for (const std::string& path : shaderPaths)
     {
-        program->addShaderSource(m_shaderParser->loadFromFile(path));
+        program->addShaderSource(m_shaderParser->loadFromFile(path, defines));
     }
 
     auto result = m_api->compile(program);

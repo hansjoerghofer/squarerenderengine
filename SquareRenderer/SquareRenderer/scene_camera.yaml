@@ -1,0 +1,93 @@
+models:
+ - filepath: Resources/Scenes/Camera/Camera_05.fbx
+   scale: 0.1
+   position: [0,0,0]
+   rotation: [0,0,0]
+
+lights:
+ - type: Directional
+   direction: [1,-1,-0.5]
+   color: [1,1,1]
+   intensity: 1
+   isShadowCaster: true
+
+sky:
+  filepath: Resources/Textures/artist_workshop_4k.hdr
+  rotation: 0
+
+overrides:
+  material:
+    - name: Ground
+      parameters:
+        - uniform: albedoTexture
+          type: Texture2D
+          value: 
+            path: Resources/Textures/FloorTexture.png
+            format: sRGB
+            wrap: Mirror
+        - uniform: metallicFactor
+          type: Float
+          value: 0
+    - name: Lens_Body
+      parameters:
+        - uniform: albedoTexture
+          type: Texture2D
+          value: 
+            path: Resources/Scenes/Camera/Camera_01_Lens_8-bit_Diffuse.png
+            format: sRGB
+        - uniform: normalMap
+          type: Texture2D
+          value: 
+            path: Resources/Scenes/Camera/Camera_01_Lens_8-bit_Normal.png
+            format: RGB
+        - uniform: pbrAttributesTexture
+          type: PackedTexture2D
+          value:
+            r: Resources/Scenes/Camera/Camera_01_Lens_8-bit_Metallic.png
+            g: Resources/Scenes/Camera/Camera_01_Lens_8-bit_Roughness.png
+            b: white #occlusion
+            a: white #unused
+    - name: Main_Lenses
+      parameters:
+        - uniform: roughnessFactor
+          type: Float
+          value: 0.05
+    - name: Strap_Cover
+      parameters:
+        - uniform: albedoTexture
+          type: Texture2D
+          value: 
+            path: Resources/Scenes/Camera/Camera_01_StrapCover_8-bit_Diffuse.png
+            format: sRGB
+        - uniform: normalMap
+          type: Texture2D
+          value: 
+            path: Resources/Scenes/Camera/Camera_01_StrapCover_8-bit_Normal.png
+            format: RGB
+        - uniform: pbrAttributesTexture
+          type: PackedTexture2D
+          value:
+            r: Resources/Scenes/Camera/Camera_01_StrapCover_8-bit_Metallic.png
+            g: Resources/Scenes/Camera/Camera_01_StrapCover_8-bit_Roughness.png
+            b: white #occlusion
+            a: white #unused
+    - name: Main
+      parameters:
+        - uniform: albedoTexture
+          type: Texture2D
+          value: 
+            path: Resources/Scenes/Camera/Camera_01_8-bit_Diffuse.png
+            format: sRGB
+        - uniform: normalMap
+          type: Texture2D
+          value: 
+            path: Resources/Scenes/Camera/Camera_01_8-bit_Normal.png
+            format: RGB
+        - uniform: pbrAttributesTexture
+          type: PackedTexture2D
+          value:
+            r: Resources/Scenes/Camera/Camera_01_8-bit_Metallic.png
+            g: Resources/Scenes/Camera/Camera_01_8-bit_Roughness.png
+            b: white #occlusion
+            a: white #unused
+            

@@ -306,14 +306,35 @@ void GLWindow::onGUI()
     ImGuiIO& io = ImGui::GetIO();
     m_inputHandler->guiHasMouseFocus(io.WantCaptureMouse);
 
-    ImGui::ShowDemoWindow(&m_showUiDemo);
-
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     
+    // draw main menu bar
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("Widgets"))
+        {
+            for (IWidgetSPtr widget : m_widgets)
+            {
+                if (ImGui::MenuItem(widget->name().c_str(), NULL, widget->visible()))
+                {
+                    widget->setVisible(!widget->visible());
+                }
+            }
+
+            //ImGui::Separator();
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
+    // draw widgets
     for (IWidgetSPtr widget : m_widgets)
     {
         widget->draw();
     }
+
+    //ImGui::ShowDemoWindow(&m_showUiDemo);
 }
 
 void GLWindow::handleResize(int width, int height)

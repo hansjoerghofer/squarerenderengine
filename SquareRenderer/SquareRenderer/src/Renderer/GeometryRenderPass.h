@@ -48,6 +48,10 @@ public:
 
     virtual void setEnabled(bool flag) override;
 
+    void setWireframeMode(bool flag);
+
+    bool wireframeMode() const;
+
 protected:
 
     Data m_data;

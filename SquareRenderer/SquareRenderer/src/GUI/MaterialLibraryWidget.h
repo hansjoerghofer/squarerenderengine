@@ -48,6 +48,12 @@ public:
 
 	void draw() override;
 
+	const std::string& name() const override;
+
+	bool visible() const override;
+
+	void setVisible(bool flag) override;
+
 private:
 
 	MaterialLibrarySPtr m_matLib;

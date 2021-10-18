@@ -32,6 +32,8 @@ void StatisticsWidget::update(double deltaTime)
 
 void StatisticsWidget::draw()
 {
+	if (!visible()) return;
+
 	if (!ImGui::Begin(m_title.c_str(), &m_visible))
 	{
 		ImGui::End();
@@ -45,4 +47,19 @@ void StatisticsWidget::draw()
 	ImGui::Text("FPS: %d", static_cast<int>(1.0 / m_frameTimeAcc));
 
 	ImGui::End();
+}
+
+const std::string& StatisticsWidget::name() const
+{
+	return m_title;
+}
+
+bool StatisticsWidget::visible() const
+{
+	return m_visible;
+}
+
+void StatisticsWidget::setVisible(bool flag)
+{
+	m_visible = flag;
 }

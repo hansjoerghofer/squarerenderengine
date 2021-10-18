@@ -62,3 +62,13 @@ void GeometryRenderPass::setEnabled(bool flag)
 {
 	m_data.enabled = flag;
 }
+
+void GeometryRenderPass::setWireframeMode(bool flag)
+{
+	m_data.state.enableWireframe = flag;
+}
+
+bool GeometryRenderPass::wireframeMode() const
+{
+	return m_data.state.enableWireframe;
+}

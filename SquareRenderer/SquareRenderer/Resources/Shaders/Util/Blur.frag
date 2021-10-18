@@ -15,7 +15,7 @@ void main(void)
 {
     FragColor = texture2D(image, TexCoords) * weight[0];
 
-    for (int i=1; i<3; i++) 
+    for (int i=1; i<3; i++)
     {
         #if FILTER_VERTICAL
             vec2 offset = vec2(offset[i], 0) * dim.zw;

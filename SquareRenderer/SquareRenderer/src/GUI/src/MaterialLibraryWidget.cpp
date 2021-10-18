@@ -150,12 +150,14 @@ void drawUniformGUI(UniformGroupCache<T>& uniformCache, bool showHidden)
 MaterialLibraryWidget::MaterialLibraryWidget(const std::string& title, MaterialLibrarySPtr matLib)
 	: m_title(title)
 	, m_matLib(matLib)
-	, m_visible(true)
+	, m_visible(false)
 {
 }
 
 void MaterialLibraryWidget::update(double /*deltaTime*/)
 {
+	if (!visible()) return;
+
 	if (m_matLib->programs().size() != m_programCache.size())
 	{
 		m_programCache.clear();
@@ -219,6 +221,8 @@ void MaterialLibraryWidget::update(double /*deltaTime*/)
 
 void MaterialLibraryWidget::draw()
 {
+	if (!visible()) return;
+
 	if (!ImGui::Begin(m_title.c_str(), &m_visible))
 	{
 		ImGui::End();
@@ -317,4 +321,19 @@ void MaterialLibraryWidget::draw()
 
 	//ImGui::EndChild();
 	ImGui::End();
+}
+
+const std::string& MaterialLibraryWidget::name() const
+{
+	return m_title;
+}
+
+bool MaterialLibraryWidget::visible() const
+{
+	return m_visible;
+}
+
+void MaterialLibraryWidget::setVisible(bool flag)
+{
+	m_visible = flag;
 }

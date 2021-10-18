@@ -482,7 +482,7 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 	{
 		// convert equirectangular HDRI to cubemap 
 		TextureSampler skySampler = { TextureFilter::Linear, TextureWrap::ClampToEdge, true, glm::vec4(0,0,0,0) };
-		CubemapSPtr skybox = std::make_shared<Cubemap>(skyHDRI->height() / 2, TextureFormat::SRGB, skySampler);
+		CubemapSPtr skybox = std::make_shared<Cubemap>(skyHDRI->height() / 2, TextureFormat::RGBHalf, skySampler);
 		m_renderEngine->projectEquirectangularToCubemap(skyHDRI, skybox);
 		scene->setSky(skybox);
 	}

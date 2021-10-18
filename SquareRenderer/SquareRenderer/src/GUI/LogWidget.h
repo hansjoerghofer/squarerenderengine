@@ -21,11 +21,17 @@ class LogWidget : public IWidget
 public:
     LogWidget(const std::string& title)
         : m_title(title)
-        , m_visible(true)
+        , m_visible(false)
     {
         AutoScroll = true;
         Clear();
     }
+
+    const std::string& name() const override;
+
+    bool visible() const override;
+
+    void setVisible(bool flag) override;
 
     void Clear()
     {
@@ -51,6 +57,8 @@ public:
 
     virtual void draw() override
     {
+        if (!visible()) return;
+
         if (!ImGui::Begin(m_title.c_str(), &m_visible))
         {
             ImGui::End();

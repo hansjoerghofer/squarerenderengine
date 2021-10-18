@@ -9,6 +9,7 @@
 
 #include "GUI/MaterialLibraryWidget.h"
 #include "GUI/StatisticsWidget.h"
+#include "GUI/RenderPassListWidget.h"
 
 #include "Preprocessor/SceneImporter.h"
 #include "Preprocessor/MaterialImporter.h"
@@ -53,8 +54,8 @@ int main()
     {
         ScopedTimerLog t("Scene import");
         SceneImporter si(api, matLib, renderEngine);
-        scene = si.importFromFile("scene_camera.yaml");
-        //scene = si.importFromFile("scene_lantern.yaml");
+        //scene = si.importFromFile("scene_camera.yaml");
+        scene = si.importFromFile("scene_lantern.yaml");
         //scene = si.importFromFile("scene_ukulele.yaml");
     }
 
@@ -74,6 +75,7 @@ int main()
 
     mainWindow->addWidget(std::make_shared<MaterialLibraryWidget>("Materials", matLib));
     mainWindow->addWidget(std::make_shared<StatisticsWidget>("Stats", mainWindow, renderEngine));
+    mainWindow->addWidget(std::make_shared<RenderPassListWidget>("Render Passes", renderEngine));
 
     Timer frameTimer;
     while (mainWindow->isOpen())

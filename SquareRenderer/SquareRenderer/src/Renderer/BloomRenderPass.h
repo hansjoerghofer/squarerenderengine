@@ -2,10 +2,12 @@
 #include "Renderer/IRenderPass.h"
 
 DECLARE_PTRS(GraphicsAPI);
+DECLARE_PTRS(Material);
 DECLARE_PTRS(MaterialLibrary);
 DECLARE_PTRS(RenderTarget);
 DECLARE_PTRS(IRenderTarget);
 DECLARE_PTRS(IGeometry);
+DECLARE_PTRS(BloomRenderPass);
 
 class BloomRenderPass : public IRenderPass
 {
@@ -29,13 +31,27 @@ public:
 
 	virtual void update(double deltaTime) override;
 
+	ITextureSPtr blurBuffer() const;
+
+	int iterations() const;
+
+	void setIterations(int value);
+
+	float threshold() const;
+
+	void setThreshold(float value);
+
 protected:
+
+	RenderTargetSPtr createColorBuffer(int width, int height);
+
+	std::string m_name = "Bloom";
 
 	bool m_enabled = true;
 
-	int m_numBlurIterations = 3;
+	int m_numBlurIterations = 1;
 
-	float m_scale = .2f;
+	float m_scale = .25f;
 
 	float m_brightnessThreshold = 1.f;
 
@@ -46,7 +62,7 @@ protected:
 
 	IGeometrySPtr m_fullscreenTriangle;
 
-	RenderTargetSPtr m_upsampledRT;
+	MaterialSPtr m_brightpassFilter;
 
 	RenderTargetSPtr m_pingRT;
 	RenderTargetSPtr m_pongRT;

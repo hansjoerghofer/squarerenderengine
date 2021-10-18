@@ -49,7 +49,7 @@ protected:
 	float m_dpiScaling = 1.f;
 
 	bool m_guiInitialized = false;
-	bool m_showUiDemo = true;
+	bool m_showUiDemo = false;
 
 	std::list<IWidgetSPtr> m_widgets;
 	LogCallbackSPtr m_logCallback;

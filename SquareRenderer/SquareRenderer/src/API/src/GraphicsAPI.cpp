@@ -271,6 +271,12 @@ public:
         case ShaderType::Geometry:
             shaderType = GL_GEOMETRY_SHADER;
             break;
+        case ShaderType::TesselationControl:
+            shaderType = GL_TESS_CONTROL_SHADER;
+            break;
+        case ShaderType::TesselationEvaluation:
+            shaderType = GL_TESS_EVALUATION_SHADER;
+            break;
         case ShaderType::Compute:
             shaderType = GL_COMPUTE_SHADER;
             break;
@@ -1171,6 +1177,11 @@ GraphicsAPI::Result GraphicsAPI::compile(ShaderProgramSPtr program)
 
         1 << static_cast<unsigned int>(ShaderType::Vertex) |
         1 << static_cast<unsigned int>(ShaderType::Geometry) |
+        1 << static_cast<unsigned int>(ShaderType::Fragment),
+
+        1 << static_cast<unsigned int>(ShaderType::Vertex) |
+        1 << static_cast<unsigned int>(ShaderType::TesselationControl) |
+        1 << static_cast<unsigned int>(ShaderType::TesselationEvaluation) |
         1 << static_cast<unsigned int>(ShaderType::Fragment),
 
         1 << static_cast<unsigned int>(ShaderType::Compute)

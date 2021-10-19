@@ -31,6 +31,8 @@ public:
 
 	void unbind();
 
+	bool supportsTesselation() const;
+
 	const std::vector<ShaderSourceSPtr>& sources() const;
 
 	const std::unordered_map<std::string, UniformMetaInfo>& uniformMetaInfo() const;
@@ -69,7 +71,9 @@ private:
 
 	IShaderProgramResourceUPtr m_linkedResource;
 
-	bool m_isBound;
+	bool m_isBound = false;
+
+	bool m_supportsTesselation = false;
 
 	std::vector<ShaderSourceSPtr> m_sources;
 

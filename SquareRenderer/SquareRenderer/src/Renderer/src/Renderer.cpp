@@ -81,30 +81,36 @@ inline GLboolean translate(bool flag)
     return flag ? GL_TRUE : GL_FALSE;
 }
 
-class RenderVisitor : public IGeometryVisitor
+
+void RenderVisitor::prepare(const Material& mat)
+{ 
+    m_tesselate = mat.program()->supportsTesselation();
+}
+
+void RenderVisitor::visit(Mesh& mesh)
 {
-public:
-    virtual ~RenderVisitor() {}
+    const GLsizei indexCount = static_cast<GLsizei>(mesh.indexCount());
 
-    virtual void visit(Mesh& mesh) override
-    {
-        const GLsizei indexCount = static_cast<GLsizei>(mesh.indexCount());
-        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
-    }
+    const GLenum mode = m_tesselate ? GL_PATCHES : GL_TRIANGLES;
 
-    virtual void visit(PrimitiveSet& primitiveSet) override
-    {
-        const GLenum type = translate(primitiveSet.type());
-        const GLsizei vertexCount = static_cast<GLsizei>(primitiveSet.vertexCount());
-        glDrawArrays(type, 0, vertexCount);
-    }
-};
+    glDrawElements(mode, indexCount, GL_UNSIGNED_INT, 0);
+}
+
+void RenderVisitor::visit(PrimitiveSet& primitiveSet)
+{
+    const GLenum type = translate(primitiveSet.type());
+    const GLsizei vertexCount = static_cast<GLsizei>(primitiveSet.vertexCount());
+    glDrawArrays(type, 0, vertexCount);
+}
 
 Renderer::Renderer()
     : m_geometryPainter(new RenderVisitor())
 {
     // initalize renderer state
     applyState(RendererState(), true);
+
+    // setup num control vertices for tesselation
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
 }
 
 void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
@@ -112,6 +118,8 @@ void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
     mat->bind();
     bindTextures(mat);
     geo->bind();
+
+    m_geometryPainter->prepare(*mat);
 
     geo->accept(*m_geometryPainter);
 

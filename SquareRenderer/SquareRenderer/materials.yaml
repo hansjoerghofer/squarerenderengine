@@ -1,6 +1,13 @@
 shaderRoot: Resources/Shaders/
 
-materials:
+programs:
+ - name: Test
+   defines: [ TESSELATION ]
+   files:
+     - Test.vert
+     - Lit/Default.tesc
+     - Lit/Default.tese
+     - Test.frag
  - name: Lit.BlinnPhong
    defines: [ SHADOW_HARD ]
    files:

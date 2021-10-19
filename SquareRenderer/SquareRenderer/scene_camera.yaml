@@ -18,6 +18,7 @@ sky:
 overrides:
   material:
     - name: Ground
+      program: Test
       parameters:
         - uniform: albedoTexture
           type: Texture2D

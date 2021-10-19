@@ -16,7 +16,9 @@ static const std::map<std::string, ShaderType> s_extensionToShaderType =
     { ".vert", ShaderType::Vertex },
     { ".frag", ShaderType::Fragment },
     { ".geom", ShaderType::Geometry },
-    { ".comp", ShaderType::Compute }
+    { ".comp", ShaderType::Compute },
+    { ".tesc", ShaderType::TesselationControl },
+    { ".tese", ShaderType::TesselationEvaluation }
 };
 
 static const std::map<std::string, UniformType> s_glslTypeToUniformType =

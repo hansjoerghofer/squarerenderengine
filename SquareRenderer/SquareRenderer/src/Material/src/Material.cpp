@@ -20,6 +20,12 @@ ShaderProgramSPtr Material::program() const
 	return m_program;
 }
 
+void Material::setProgram(ShaderProgramSPtr program)
+{
+	unbind();
+	m_program = program;
+}
+
 const std::string& Material::name() const
 {
 	return m_name;

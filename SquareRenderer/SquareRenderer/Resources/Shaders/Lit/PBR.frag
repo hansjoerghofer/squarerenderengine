@@ -73,10 +73,16 @@ vec3 IBL(in vec3 N, in vec3 V, in vec3 R, in vec3 F0, in Material mat)
 
 void main() 
 {
+#if DISABLE_ALBEDO_TEXTURE
+    vec4 cAlbedo = albedoColor;
+#else
     vec4 cAlbedo = albedoColor * texture(albedoTexture, IN.uv);
+#endif
 
+#if ALPHA_CUTOUT
     // cutout alpha
     if(cAlbedo.a < 0.001) discard;
+#endif
 
     vec3 pCamera = _cameraPosition();
     

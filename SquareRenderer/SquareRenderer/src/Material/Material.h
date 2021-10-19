@@ -19,6 +19,8 @@ public:
 
 	ShaderProgramSPtr program() const;
 
+	void setProgram(ShaderProgramSPtr program);
+
 	const std::string& name() const;
 
 	void bind();

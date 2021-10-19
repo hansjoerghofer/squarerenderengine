@@ -367,6 +367,16 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 				continue;
 			}
 
+			if (materialOverride["program"])
+			{
+				const std::string programName = materialOverride["program"].as<std::string>();
+				ShaderProgramSPtr program = m_matLib->findProgram(programName);
+				if (program)
+				{
+					material->setProgram(program);
+				}
+			}
+
 			for (const auto& parameter : materialOverride["parameters"])
 			{
 				const std::string uniform = parameter["uniform"].as<std::string>();

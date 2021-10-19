@@ -5,6 +5,7 @@
 #include "Application/GL.h"
 #include "Renderer/RendererState.h"
 #include "Texture/TextureDefines.h"
+#include "Scene/IGeometryVisitor.h"
 
 #include <vector>
 
@@ -15,7 +16,23 @@ DECLARE_PTRS(ShaderProgram);
 DECLARE_PTRS(Renderer);
 DECLARE_PTRS(ITexture);
 DECLARE_PTRS(IRenderTarget);
-DECLARE_PTRS(IGeometryVisitor);
+DECLARE_PTRS(RenderVisitor);
+
+class RenderVisitor : public IGeometryVisitor
+{
+public:
+    virtual ~RenderVisitor() {}
+
+	void prepare(const Material& mat);
+
+	virtual void visit(Mesh& mesh) override;
+
+	virtual void visit(PrimitiveSet& primitiveSet) override;
+
+private:
+
+    bool m_tesselate = false;
+};
 
 class Renderer
 {
@@ -43,7 +60,7 @@ private:
 
 	void unbindTextures();
 
-	IGeometryVisitorUPtr m_geometryPainter;
+	RenderVisitorUPtr m_geometryPainter;
 
 	IRenderTargetSPtr m_currentRenderTarget;
 

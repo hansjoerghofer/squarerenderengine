@@ -55,6 +55,11 @@ void ShaderProgram::unbind()
 	m_isBound = false;
 }
 
+bool ShaderProgram::supportsTesselation() const
+{
+	return m_supportsTesselation;
+}
+
 void ShaderProgram::addShaderSource(ShaderSourceSPtr source)
 {
 	if (!source)
@@ -77,6 +82,12 @@ void ShaderProgram::addShaderSource(ShaderSourceSPtr source)
 	for (const auto& metaInfo : source->uniformMetaInfo())
 	{
 		m_nameToUniformMetaInfo[metaInfo.name] = metaInfo;
+	}
+
+	if (source->type() == ShaderType::TesselationControl ||
+		source->type() == ShaderType::TesselationEvaluation)
+	{
+		m_supportsTesselation = true;
 	}
 }
 

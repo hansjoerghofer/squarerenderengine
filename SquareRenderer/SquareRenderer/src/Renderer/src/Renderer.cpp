@@ -359,12 +359,10 @@ void Renderer::bindTextures(MaterialSPtr mat)
 
 void Renderer::unbindTextures()
 {
-    GLenum activeTextureUnit = GL_TEXTURE0;
-    for (const auto& texture : m_boundTextures)
+    for (size_t i = 0; i < m_boundTextures.size(); ++i)
     {
-        glActiveTexture(activeTextureUnit++);
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + i));
         glBindTexture(GL_TEXTURE_2D, 0);
     }
-
     m_boundTextures.clear();
 }

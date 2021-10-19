@@ -31,8 +31,8 @@ void BloomRenderPass::setup()
 	m_pongRT = createColorBuffer(m_pingRT->width(), m_pingRT->height());
 
 	glm::vec4 dim = glm::vec4();
-	dim.x = m_pingRT->width();
-	dim.y = m_pingRT->height();
+	dim.x = static_cast<float>(m_pingRT->width());
+	dim.y = static_cast<float>(m_pingRT->height());
 	dim.z = 1.f / m_pingRT->width();
 	dim.w = 1.f / m_pingRT->height();
 

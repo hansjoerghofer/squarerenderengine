@@ -24,7 +24,7 @@
 
 #include <iostream>
 
-int main()
+int main(int argc, char* argv[])
 {
     // register console logger
     auto logcout = Logger::getInstance().registerCallback(
@@ -35,6 +35,8 @@ int main()
             }
         }
     );
+
+    const std::string inputScenePath = argc >= 2 ? std::string(argv[1]) : "scene_geo.yaml";
 
     GraphicsAPISPtr api = GraphicsAPI::create();
 
@@ -54,8 +56,9 @@ int main()
     {
         ScopedTimerLog t("Scene import");
         SceneImporter si(api, matLib, renderEngine);
+        scene = si.importFromFile(inputScenePath);
         //scene = si.importFromFile("scene_camera.yaml");
-        scene = si.importFromFile("scene_lantern.yaml");
+        //scene = si.importFromFile("scene_lantern.yaml");
         //scene = si.importFromFile("scene_ukulele.yaml");
     }
 

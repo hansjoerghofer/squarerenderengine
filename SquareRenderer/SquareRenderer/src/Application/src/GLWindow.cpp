@@ -20,9 +20,9 @@ void glDebugOutput(GLenum source,
     GLenum type,
     unsigned int id,
     GLenum severity,
-    GLsizei length,
+    GLsizei /*length*/,
     const char* message,
-    const void* userParam)
+    const void* /*userParam*/)
 {
     switch (severity)
     {

@@ -354,60 +354,60 @@ void RenderEngine::setupPostProcessing()
 
 	m_renderPassList.emplace_back(new BloomRenderPass(m_api, m_matlib, m_fullscreenTriangle, m_gBuffer));
 
-	const float bloomScale = 1.f;// m_scale;
-	glm::vec4 dim = glm::vec4();
+	//const float bloomScale = 1.f;// m_scale;
+	//glm::vec4 dim = glm::vec4();
 
 	// bloom
-	if(false)
-	{
-		RenderTargetSPtr rt = screenSpaceTarget(bloomScale);
+	//if(false)
+	//{
+	//	RenderTargetSPtr rt = screenSpaceTarget(bloomScale);
 
-		dim.x = rt->width();
-		dim.y = rt->height();
-		dim.z = 1.f / rt->width();
-		dim.w = 1.f / rt->height();
+	//	dim.x = static_cast<float>(rt->width());
+	//	dim.y = static_cast<float>(rt->height());
+	//	dim.z = 1.f / rt->width();
+	//	dim.w = 1.f / rt->height();
 
-		MaterialSPtr mat = m_matlib->instanciate("Util.HighpassFilter", "Highpass");
-		mat->setUniform("image", getLastColorTarget());
-		mat->setUniform("threshold", 1.f);
+	//	MaterialSPtr mat = m_matlib->instanciate("Util.HighpassFilter", "Highpass");
+	//	mat->setUniform("image", getLastColorTarget());
+	//	mat->setUniform("threshold", 1.f);
 
-		m_renderPassList.emplace_back(new ScreenSpaceRenderPass("Blur", m_fullscreenTriangle, mat, rt));
-	}
+	//	m_renderPassList.emplace_back(new ScreenSpaceRenderPass("Blur", m_fullscreenTriangle, mat, rt));
+	//}
 
-	if(false)
-	{
-		RenderTargetSPtr ping = screenSpaceTarget(bloomScale);
-		RenderTargetSPtr pong = screenSpaceTarget(bloomScale);
+	//if(false)
+	//{
+	//	RenderTargetSPtr ping = screenSpaceTarget(bloomScale);
+	//	RenderTargetSPtr pong = screenSpaceTarget(bloomScale);
 
-		MaterialSPtr matV = m_matlib->instanciate("Util.VerticalBlur");
-		matV->setUniform("image", getLastColorTarget());
-		matV->setUniform("dim", dim);
-		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-			"VerticalBlur_0", m_fullscreenTriangle, matV, ping));
+	//	MaterialSPtr matV = m_matlib->instanciate("Util.VerticalBlur");
+	//	matV->setUniform("image", getLastColorTarget());
+	//	matV->setUniform("dim", dim);
+	//	m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+	//		"VerticalBlur_0", m_fullscreenTriangle, matV, ping));
 
-		MaterialSPtr matH = m_matlib->instanciate("Util.HorizontalBlur");
-		matH->setUniform("image", getLastColorTarget());
-		matH->setUniform("dim", dim);
-		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-			"HorizontalBlur_0", m_fullscreenTriangle, matH, pong));
+	//	MaterialSPtr matH = m_matlib->instanciate("Util.HorizontalBlur");
+	//	matH->setUniform("image", getLastColorTarget());
+	//	matH->setUniform("dim", dim);
+	//	m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+	//		"HorizontalBlur_0", m_fullscreenTriangle, matH, pong));
 
-		for (int i = 1; i < 4; ++i)
-		{
-			// vertical
-			MaterialSPtr mat1 = m_matlib->instanciate("Util.VerticalBlur");
-			mat1->setUniform("image", getLastColorTarget());
-			mat1->setUniform("dim", dim);
-			m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-				"VerticalBlur_" + std::to_string(i), m_fullscreenTriangle, mat1, ping));
+	//	for (int i = 1; i < 4; ++i)
+	//	{
+	//		// vertical
+	//		MaterialSPtr mat1 = m_matlib->instanciate("Util.VerticalBlur");
+	//		mat1->setUniform("image", getLastColorTarget());
+	//		mat1->setUniform("dim", dim);
+	//		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+	//			"VerticalBlur_" + std::to_string(i), m_fullscreenTriangle, mat1, ping));
 
-			// horizontal
-			MaterialSPtr mat2 = m_matlib->instanciate("Util.HorizontalBlur");
-			mat2->setUniform("image", getLastColorTarget());
-			mat2->setUniform("dim", dim);
-			m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-				"HorizontalBlur_" + std::to_string(i), m_fullscreenTriangle, mat2, pong));
-		}
-	}
+	//		// horizontal
+	//		MaterialSPtr mat2 = m_matlib->instanciate("Util.HorizontalBlur");
+	//		mat2->setUniform("image", getLastColorTarget());
+	//		mat2->setUniform("dim", dim);
+	//		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
+	//			"HorizontalBlur_" + std::to_string(i), m_fullscreenTriangle, mat2, pong));
+	//	}
+	//}
 
 	{
 		MaterialSPtr mat = m_matlib->instanciate("PP.Tonemapping", "Tonemapping");

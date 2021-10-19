@@ -74,18 +74,18 @@ MaterialLibraryUPtr MaterialImporter::importFromFile(const std::string& filepath
     
     const std::string shaderRoot = config["shaderRoot"].as<std::string>();
 
-    for (const auto& material : config["materials"])
+    for (const auto& programConf : config["programs"])
     {
-        const std::string programName = material["name"].as<std::string>();
+        const std::string programName = programConf["name"].as<std::string>();
 
         std::vector<std::string> defines;
-        for (const auto& defineNode : material["defines"])
+        for (const auto& defineNode : programConf["defines"])
         {
             defines.push_back(defineNode.as<std::string>());
         }
 
         std::vector<std::string> shaderPaths;
-        for (const auto& pathNode : material["files"])
+        for (const auto& pathNode : programConf["files"])
         {
             const std::string shaderPath = pathNode.as<std::string>();
             if (!shaderPath.empty())

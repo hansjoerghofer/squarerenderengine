@@ -318,7 +318,7 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 	{
 		const std::string type = light["type"].as<std::string>();
 		const glm::vec3 color = light["color"].as<glm::vec3>(glm::vec3(1,1,1));
-		const float intensity = light["intensity"].as<float>(1);
+		const float intensity = light["intensity"].as<float>(1.f);
 		const bool isShadowCaster = light["isShadowCaster"].as<bool>(false);
 
 		ILightsourceSPtr lightsource;

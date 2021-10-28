@@ -9,8 +9,8 @@
 in VertexShaderData
 {
     vec2 uv;
-    vec3 normal;
-    vec3 pFragmentWS;
+    vec3 normalWS;
+    vec3 fragmentPosWS;
     
     mat3 TBN;
 
@@ -18,7 +18,7 @@ in VertexShaderData
 } IN;
 
 layout (location = 0) out vec4 OutputShadedRoughness;
-//layout (location = 1) out vec4 OutputNormalDepth;
+layout (location = 1) out vec4 OutputNormalDepth;
 
 // uniforms
 uniform sampler2D albedoTexture; // [white]
@@ -66,9 +66,9 @@ vec3 IBL(in vec3 N, in vec3 V, in vec3 R, in vec3 F0, in Material mat)
     vec2 envBRDF            = texture(brdfLUT, vec2(max(dot(N, V), 0.0), mat.roughness)).rg;
     vec3 specular           = prefilteredColor * (F * envBRDF.x + envBRDF.y);
     
-    float visibility = 0.5 + _shadow(IN.pFragmentLS[0], 0) * 0.5;
+    //float visibility = 0.5 + _shadow(IN.pFragmentLS[0], 0) * 0.5;
 
-    return mat.ao * (kD * diffuse + specular) * visibility;
+    return mat.ao * (kD * diffuse + specular);// * visibility;
 }
 
 void main() 
@@ -94,7 +94,7 @@ void main()
     mat.roughness = roughnessFactor * pbrAttr.g;
     mat.ao = aoFactor * pbrAttr.b;
 
-    vec3 P = IN.pFragmentWS;
+    vec3 P = IN.fragmentPosWS;
     vec3 N = sampleNormal();
     vec3 V = normalize(pCamera - P);
     vec3 R = normalize(reflect(-V, N));
@@ -115,7 +115,7 @@ void main()
         // point light
         if(_lightsPosWS[i].w > 0)
         {
-            vec3 LP = _lightsPosWS[i].xyz - IN.pFragmentWS;
+            vec3 LP = _lightsPosWS[i].xyz - IN.fragmentPosWS;
             attenuation = 10000.0 / dot(LP, LP);
 
             L = normalize(LP);
@@ -152,7 +152,7 @@ void main()
 
     vec3 cShaded = cLight + cAmbient;
 
-    OutputShadedRoughness = vec4(cShaded, 1);//mat.roughness);
-    //OutputShadedRoughness = vec4(mat.ao, mat.ao, mat.ao, 1);//mat.roughness);
+    OutputShadedRoughness = vec4(cShaded, mat.roughness);
     //OutputNormalDepth = vec4(N.xyz, gl_FragCoord.z);
+    OutputNormalDepth = vec4(P.xyz, gl_FragCoord.z);
 }

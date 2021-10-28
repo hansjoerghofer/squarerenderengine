@@ -1,7 +1,7 @@
 #include "GUI/StatisticsWidget.h"
-#include "GUI/imgui.h"
-
 #include "Application/GLWindow.h"
+#include "GUI/imgui.h"
+#include "Renderer/IRenderPass.h"
 #include "Renderer/RenderEngine.h"
 
 #include <sstream>
@@ -42,9 +42,24 @@ void StatisticsWidget::draw()
 
 	ImGui::Text("Resolution: %dx%d", m_engine->renderTarget()->width(), m_engine->renderTarget()->height());
 
-	ImGui::Text("Frametime: %.3fs", m_frameTimeAcc);
+	ImGui::Text("Frametime: %.2fms", m_frameTimeAcc * 1e3);
 
 	ImGui::Text("FPS: %d", static_cast<int>(1.0 / m_frameTimeAcc));
+
+	ImGui::Separator();
+
+	for (IRenderPassSPtr pass : m_engine->renderPasses())
+	{
+		double gpuTime = 0;
+
+		if (pass->isEnabled())
+		{
+			RenderStatisticsData stats = pass->renderStatistics();
+			gpuTime = stats.gpuTimeMs;
+		}
+
+		ImGui::Text("%s: %.2fms", pass->name().c_str(), gpuTime);
+	}
 
 	ImGui::End();
 }

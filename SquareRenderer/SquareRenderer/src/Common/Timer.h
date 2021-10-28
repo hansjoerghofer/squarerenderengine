@@ -11,13 +11,18 @@ public:
 		: m_start(std::chrono::system_clock::now())
 	{}
 
-	double elapsed() const
+	double elapsedMs() const
 	{
 		const auto end = std::chrono::system_clock::now();
-		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - m_start);
+		const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - m_start);
 
-		// to seconds
-		return elapsed.count() * 0.001;
+		// to milliseconds 
+		return elapsed.count() * 1e-6;
+	}
+
+	double elapsed() const
+	{
+		return elapsedMs() * 1e-3;
 	}
 
 	void reset()

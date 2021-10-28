@@ -13,3 +13,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #pragma warning( pop )
+
+namespace glm
+{
+	constexpr vec3 UP(0, 1, 0);
+}

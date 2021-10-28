@@ -1,18 +1,18 @@
 #include "Renderer/GeometryRenderPass.h"
-
-#include "Renderer/IDrawable.h"
-#include "Renderer/IRenderTarget.h"
-#include "Renderer/Renderer.h"
+#include "API/GraphicsAPI.h"
 #include "Material/Material.h"
+#include "Material/MaterialLibrary.h"
+#include "Renderer/IDrawable.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/RenderTarget.h"
+#include "Renderer/ResourceManager.h"
 #include "Scene/IGeometry.h"
+#include "Texture/Texture2D.h"
+#include "Texture/TextureDefines.h"
 
-GeometryRenderPass::GeometryRenderPass(const Data& data)
-	: m_data(data)
-{
-}
-
-GeometryRenderPass::GeometryRenderPass(Data&& data)
-	: m_data(data)
+GeometryRenderPass::GeometryRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib, const Data& data)
+	: BaseRenderPass(data.name, resources, matlib)
+	, m_data(data)
 {
 }
 
@@ -20,17 +20,7 @@ GeometryRenderPass::~GeometryRenderPass()
 {
 }
 
-const std::string& GeometryRenderPass::name() const
-{
-	return m_data.name;
-}
-
-IRenderTargetSPtr GeometryRenderPass::target() const
-{
-	return m_data.target;
-}
-
-void GeometryRenderPass::render(Renderer& renderer) const
+void GeometryRenderPass::renderInternal(Renderer& renderer) const
 {
 	renderer.setTarget(m_data.target);
 
@@ -47,10 +37,6 @@ void GeometryRenderPass::render(Renderer& renderer) const
 			elem->postRender();
 		}
 	}
-}
-
-void GeometryRenderPass::update(double /*deltaTime*/)
-{
 }
 
 bool GeometryRenderPass::isEnabled() const

@@ -10,29 +10,48 @@ layout (location = 1) in vec2 vUV;
 layout (location = 2) in vec3 vNormal;
 layout (location = 3) in vec3 vTangent;
 
+#if TESSELATION
+    out ControlPointData
+    {
+        vec2 uv;
+        vec3 normalTS;
+        vec3 tangentTS;
+        vec3 fragmentPosWS;
+
+    } OUT;
+#else
+    out VertexShaderData
+    {
+        vec2 uv;
+        vec3 normalWS;
+        vec3 fragmentPosWS;
+
+        mat3 TBN;
+
+        vec4[_MAX_SIZE_LIGHT] pFragmentLS;
+    } OUT;
+#endif
+
 uniform mat4 modelToWorld = mat4(1);
 uniform mat4 normalToWorld = mat4(1);
-
-out VertexShaderData
-{
-    vec2 uv;
-    vec3 normal;
-    vec3 pFragmentWS;
-
-    mat3 TBN;
-
-    vec4[_MAX_SIZE_LIGHT] pFragmentLS;
-} OUT;
 
 void main() 
 {
     vec4 fragPosWS = modelToWorld * vec4(vPosition, 1.0);
 
     OUT.uv = vUV;
-    OUT.pFragmentWS = fragPosWS.xyz;
-    
+    OUT.fragmentPosWS = fragPosWS.xyz;
+
+#if TESSELATION
+
+    OUT.normalTS = normalize(vNormal.xyz);
+    OUT.tangentTS = normalize(vTangent.xyz);
+    gl_Position = fragPosWS;
+
+#else
+
     OUT.TBN = _constructTBN(modelToWorld, vNormal, vTangent);
-    OUT.normal = normalize(normalToWorld * vec4(vNormal, 0)).xyz;
+    OUT.normalWS = normalize(normalToWorld * vec4(vNormal, 0)).xyz;
 
     for(int i = 0; i < _numLights; ++i)
     {
@@ -40,4 +59,5 @@ void main()
     }
 
     gl_Position = _VP * fragPosWS;
+#endif
 }

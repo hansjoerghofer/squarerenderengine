@@ -20,6 +20,8 @@ DECLARE_PTRS(IDrawable);
 DECLARE_PTRS(Texture2D);
 DECLARE_PTRS(Cubemap);
 DECLARE_PTRS(IRenderPass);
+DECLARE_PTRS(ResourceManager);
+DECLARE_PTRS(ShadowMappingRenderPass);
 
 template<typename T>
 class UniformBlockData;
@@ -27,14 +29,14 @@ struct CameraUniformBlock;
 struct LightsUniformBlock;
 struct RenderCommand;
 
-struct ShadowData
-{
-	int index = -1;
-	glm::mat4 lightMatrice = glm::mat4(1);
-
-	ITextureSPtr data = nullptr;
-	MaterialSPtr material = nullptr;
-};
+//struct ShadowData
+//{
+//	int index = -1;
+//	glm::mat4 lightMatrice = glm::mat4(1);
+//
+//	ITextureSPtr data = nullptr;
+//	MaterialSPtr material = nullptr;
+//};
 
 struct IBLData
 {
@@ -92,8 +94,6 @@ protected:
 
 	void setupPostProcessing();
 
-	void setupShadowMapping();
-
 	RenderTargetSPtr screenSpaceTarget(float scale);
 
 	ITextureSPtr getLastColorTarget(int slotIndex = 0) const;
@@ -114,7 +114,7 @@ protected:
 
 	IDrawableSPtr m_gizmos;
 
-	IGeometrySPtr m_fullscreenTriangle;
+	ResourceManagerSPtr m_resources;
 
 	std::shared_ptr<UniformBlockData<CameraUniformBlock>> m_cameraUniformBlock;
 	std::shared_ptr<UniformBlockData<LightsUniformBlock>> m_lightsUniformBlock;
@@ -125,7 +125,7 @@ protected:
 
 	std::list<IRenderPassSPtr> m_renderPassList;
 
-	std::unordered_map<ILightsourceSPtr, ShadowData> m_shadowData;
+	ShadowMappingRenderPassSPtr m_shadowMappingPass;
 
 	IBLData m_ibl;
 

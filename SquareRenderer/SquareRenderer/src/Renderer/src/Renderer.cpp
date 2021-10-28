@@ -1,13 +1,16 @@
-#include "API/GraphicsAPI.h"
 #include "Renderer/Renderer.h"
-#include "Renderer/IRenderTarget.h"
-#include "Scene/IGeometry.h"
+#include "API/GraphicsAPI.h"
+#include "Application/GL.h"
+#include "Common/Logger.h"
 #include "Material/Material.h"
 #include "Material/ShaderProgram.h"
-#include "Texture/ITexture.h"
+#include "Renderer/RenderTarget.h"
+#include "Renderer/IRenderTarget.h"
+#include "Scene/IGeometry.h"
 #include "Scene/IGeometryVisitor.h"
 #include "Scene/Mesh.h"
 #include "Scene/PrimitiveSet.h"
+#include "Texture/ITexture.h"
 
 inline GLenum translate(BlendFactor factor)
 {
@@ -81,6 +84,21 @@ inline GLboolean translate(bool flag)
     return flag ? GL_TRUE : GL_FALSE;
 }
 
+inline GLenum translate(DrawBuffer drawBuffer)
+{
+    switch (drawBuffer)
+    {
+    case DrawBuffer::Attachment0: return GL_COLOR_ATTACHMENT0;
+    case DrawBuffer::Attachment1: return GL_COLOR_ATTACHMENT1;
+    case DrawBuffer::Attachment2: return GL_COLOR_ATTACHMENT2;
+    case DrawBuffer::Attachment3: return GL_COLOR_ATTACHMENT3;
+    case DrawBuffer::Attachment4: return GL_COLOR_ATTACHMENT4;
+    case DrawBuffer::Attachment5: return GL_COLOR_ATTACHMENT5;
+    case DrawBuffer::Attachment6: return GL_COLOR_ATTACHMENT6;
+    case DrawBuffer::Attachment7: return GL_COLOR_ATTACHMENT7;
+    default: return GL_NONE;
+    }
+}
 
 void RenderVisitor::prepare(const Material& mat)
 { 
@@ -115,6 +133,8 @@ Renderer::Renderer()
 
 void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
 {
+    Logger::Debug("Begin render %s", mat->program()->name().c_str());
+
     mat->bind();
     bindTextures(mat);
     geo->bind();
@@ -127,7 +147,7 @@ void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
     unbindTextures();
     mat->unbind();
 
-    GraphicsAPICheckError();
+    Logger::Debug("End render %s", mat->program()->name().c_str());
 }
 
 void Renderer::blit(IRenderTargetSPtr source, IRenderTargetSPtr target, TextureFilter filter, bool color, bool depth, bool stencil)
@@ -137,6 +157,11 @@ void Renderer::blit(IRenderTargetSPtr source, IRenderTargetSPtr target, TextureF
     blitBits |= depth ? GL_DEPTH_BUFFER_BIT : 0;
     blitBits |= stencil ? GL_STENCIL_BUFFER_BIT : 0;
 
+    if (blitBits == 0)
+    {
+        return;
+    }
+
     const GLenum filterEnum = filter == TextureFilter::Linear ? GL_LINEAR : GL_NEAREST;
 
     glBlitNamedFramebuffer(
@@ -144,6 +169,8 @@ void Renderer::blit(IRenderTargetSPtr source, IRenderTargetSPtr target, TextureF
         0, 0, source->width(), source->height(),
         0, 0, target->width(), target->height(),
         blitBits, filterEnum);
+
+    Logger::Debug("Blit %i -> %i", source->handle(), target->handle());
 }
 
 void Renderer::setTarget(IRenderTargetSPtr target)
@@ -160,14 +187,36 @@ void Renderer::setTarget(IRenderTargetSPtr target)
         
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-        GraphicsAPICheckError();
-
         m_currentRenderTarget = target;
     }
+
+    std::string attachmentsIds = "-";
+    if (m_currentRenderTarget->handle() != SharedResource::Handle(0))
+    {
+        attachmentsIds = "";
+        RenderTargetSPtr debT = std::static_pointer_cast<RenderTarget>(m_currentRenderTarget);
+        for (ITextureSPtr t : debT->colorTargets())
+        {
+            attachmentsIds += " " + std::to_string(t->handle());
+        }
+    }
+    Logger::Debug("Bind framebuffer: %i (Textures: %s)", m_currentRenderTarget->handle(), attachmentsIds.c_str());
 }
 
 void Renderer::applyState(const RendererState& state, bool force)
 {
+    // TODO check if it makes more sense as part of IRenderTarget::bind
+    if ((force || state.drawBuffers != m_currentState.drawBuffers) && m_currentRenderTarget)
+    {
+        m_currentState.drawBuffers = state.drawBuffers;
+
+        std::vector<GLenum> drawBuffers;
+        drawBuffers.reserve(state.drawBuffers.size());
+        for (DrawBuffer e : state.drawBuffers) { drawBuffers.push_back(translate(e)); }
+
+        glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+    }
+
     if (force || state.enableWireframe != m_currentState.enableWireframe)
     {
         m_currentState.enableWireframe = state.enableWireframe;
@@ -248,7 +297,10 @@ void Renderer::applyState(const RendererState& state, bool force)
     clearBits |= state.clearColor ? GL_COLOR_BUFFER_BIT : 0;
     clearBits |= state.clearDepth ? GL_DEPTH_BUFFER_BIT : 0;
     clearBits |= state.clearStencil ? GL_STENCIL_BUFFER_BIT : 0;
-    glClear(clearBits);
+    if (clearBits != 0)
+    {
+        glClear(clearBits);
+    }
 
     m_currentState.clearColor = state.clearColor;
     m_currentState.clearDepth = state.clearDepth;
@@ -301,8 +353,6 @@ void Renderer::applyState(const RendererState& state, bool force)
             glDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
         }
     }
-
-    GraphicsAPICheckError();
 }
 
 void Renderer::regenerateMipmaps(ITextureSPtr tex)
@@ -354,6 +404,8 @@ void Renderer::bindTextures(MaterialSPtr mat)
         m_boundTextures.push_back(texture);
 
         ++activeTextureUnit;
+
+        Logger::Debug("Bind texture %i to '%s'", texture->handle(), name.c_str());
     }
 }
 

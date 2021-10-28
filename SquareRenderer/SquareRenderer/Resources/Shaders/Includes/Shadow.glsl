@@ -1,4 +1,6 @@
 //? #version 450 core
+//! #include "Lights.glsl"
+//! #include "Sampling.glsl"
 
 uniform int pcssBlockerSamples = 16; // [1,64]
 uniform int pcssShadowSamples = 32; // [2,128]
@@ -124,19 +126,19 @@ float _shadow(in vec4 position, int index)
 
 #if SHADOW_HARD || SHADOW_PCF || SHADOW_PCSS
 
-    if (_shadowMapIndex[index] >= 0)
+    if (_shadowMapIndex[index].x >= 0)
     {
     #if SHADOW_PCSS
 
-        return _shadowPCSSHammersley(position, _shadowMapIndex[index]);
+        return _shadowPCSSHammersley(position, int(_shadowMapIndex[index].x));
 
     #elif SHADOW_PCF
 
-        return _shadowPCFHammersley(position, _shadowMapIndex[index]);
+        return _shadowPCFHammersley(position, int(_shadowMapIndex[index].x));
 
     #else
 
-        return _hardShadow(position, _shadowMapIndex[index]);
+        return _hardShadow(position, int(_shadowMapIndex[index].x));
 
     #endif
     }

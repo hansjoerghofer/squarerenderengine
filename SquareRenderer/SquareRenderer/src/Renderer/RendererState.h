@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/Math3D.h"
+#include <vector>
 
 enum class DepthTest
 {
@@ -45,6 +46,18 @@ enum class BlendFactor
     InvDstAlpha
 };
 
+enum class DrawBuffer
+{
+    Attachment0,
+    Attachment1,
+    Attachment2,
+    Attachment3,
+    Attachment4,
+    Attachment5,
+    Attachment6,
+    Attachment7
+};
+
 struct RendererState
 {
     // clear flags
@@ -60,6 +73,8 @@ struct RendererState
     bool writeColor = true;
     bool writeDepth = true;
 
+    std::vector<DrawBuffer> drawBuffers = { DrawBuffer::Attachment0 };
+
     // render modes
     bool enableWireframe = false;
     DepthTest depthTestMode = DepthTest::Less;
@@ -72,14 +87,23 @@ struct RendererState
 
     bool seamlessCubemapFiltering = false;
 
-    constexpr static RendererState Blit()
+    static RendererState Blit()
     {
         RendererState state;
-        state.clearColor = true;
+        state.clearColor = false;
         state.clearDepth = false;
         state.clearStencil = false;
         state.color = glm::vec4(1, 1, 1, 1);
         state.depthTestMode = DepthTest::None;
+        return state;
+    }
+
+    static RendererState Add()
+    {
+        RendererState state = Blit();
+        state.clearColor = false;
+        state.blendSrc = BlendFactor::One;
+        state.blendDst = BlendFactor::One;
         return state;
     }
 };

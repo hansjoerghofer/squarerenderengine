@@ -20,8 +20,35 @@
 
 #undef ASYNC_TEXTURE_IMPORT
 
+constexpr auto PI = 3.141592653589793238462643383279502884;
+constexpr auto DEG2RAD = 1.0 / (2.0 * PI);
+
 namespace YAML 
 {
+	template<>
+	struct convert<glm::vec2>
+	{
+		static Node encode(const glm::vec2& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec2& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 2)
+			{
+				return false;
+			}
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			return true;
+		}
+	};
+
 	template<>
 	struct convert<glm::vec3> 
 	{
@@ -354,6 +381,23 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 		//const float rotation = sky["rotation"].as<float>(0);
 
 		skyHDRI = ti.importFromFileAsync(hdriPath);
+
+		for (const auto& light : sky["lights"])
+		{
+			const float intensity = light["intensity"].as<float>(1.f);
+			const glm::vec3 color = light["color"].as<glm::vec3>(glm::vec3(1, 1, 1));
+			const glm::vec2 position = light["position"].as<glm::vec2>(glm::vec2(0.5,0.5));
+
+			const glm::vec2 sphericalCoords = glm::vec2((1.f-position.x) * 2.f * PI, position.y * PI);
+			const glm::vec3 direction = -glm::vec3(
+				std::sinf(sphericalCoords.x) * std::sinf(sphericalCoords.y),
+				std::cosf(sphericalCoords.y),
+				std::cosf(sphericalCoords.x) * std::sinf(sphericalCoords.y)
+			);
+
+			scene->addLight(std::make_shared<DirectionalLight>(
+				direction, color, intensity, true));
+		}
 	}
 
 	if (config["overrides"])
@@ -419,6 +463,7 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 					sourceSampler.mipmapping = false;
 
 					bool waitForImport = false;
+					size_t firstNonDefaultIndex = 0;
 					std::vector< Texture2DSPtr> channelTextures(channelTexturePaths.size());
 					for (size_t i = 0; i < channelTexturePaths.size(); ++i)
 					{
@@ -431,6 +476,7 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 						else
 						{
 							channelTextures[i] = ti.importFromFileAsync(channelTexturePath, ImportFormat::R, sourceSampler);
+							firstNonDefaultIndex = i;
 							waitForImport = true;
 						}
 					}
@@ -446,10 +492,10 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 					targetSampler.mipmapping = value["mipmapping"].as<bool>(targetSampler.mipmapping);
 					targetSampler.borderColor = value["bordercolor"].as<glm::vec4>(targetSampler.borderColor);
 
-					const TextureFormat targetFormat = channelTextures[0]->format() == TextureFormat::R ? TextureFormat::RGBA : TextureFormat::RGBAFloat;
+					const TextureFormat targetFormat = channelTextures[firstNonDefaultIndex]->format() == TextureFormat::R ? TextureFormat::RGBA : TextureFormat::RGBAFloat;
 					Texture2DSPtr texture = std::make_shared<Texture2D>(
-						channelTextures[0]->width(), 
-						channelTextures[0]->height(), 
+						channelTextures[firstNonDefaultIndex]->width(),
+						channelTextures[firstNonDefaultIndex]->height(),
 						targetFormat, 
 						targetSampler);
 

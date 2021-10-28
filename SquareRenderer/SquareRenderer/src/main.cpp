@@ -30,6 +30,7 @@ int main(int argc, char* argv[])
     auto logcout = Logger::getInstance().registerCallback(
         [](LogSeverity s, const std::string& msg) {
             if (static_cast<int>(s) > static_cast<int>(LogSeverity::Info))
+            //if (s == LogSeverity::Debug)
             {
                 std::cout << "[" << Logger::severity(s) << "]: " << msg << std::endl;
             }
@@ -65,6 +66,7 @@ int main(int argc, char* argv[])
     CameraSPtr camera = CameraSPtr(new PerspectiveCamera(
         mainWindow->width(), mainWindow->height(), 60, .1f, 10.f));
     camera->lookAt(glm::vec3(1, 1, -1.5), glm::vec3(0, 0, 0));
+    //camera->lookAt(glm::vec3(-1, -1, 1.5), glm::vec3(0, 0, 0));
 
     mainWindow->inputHandler()->enableCameraNavigation(camera, 1000, 10);
 
@@ -83,6 +85,8 @@ int main(int argc, char* argv[])
     Timer frameTimer;
     while (mainWindow->isOpen())
     {
+        Logger::Debug("--- NEW START FRAME ----------------------------------");
+
         const double deltaTime = frameTimer.elapsed();
         frameTimer.reset();
                 

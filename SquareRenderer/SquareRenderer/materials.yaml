@@ -1,20 +1,21 @@
 shaderRoot: Resources/Shaders/
 
 programs:
- - name: Test
-   defines: [ TESSELATION ]
+ - name: Lit.PBRTess
+   defines: [ SHADOW_PCF , TESSELATION ]
    files:
-     - Test.vert
-     - Lit/Default.tesc
-     - Lit/Default.tese
-     - Test.frag
+     - Lit/PBR.vert
+     - Lit/Tesselate.tesc
+     - Lit/Tesselate.tese
+     #- Test.frag
+     - Lit/PBR.frag
  - name: Lit.BlinnPhong
    defines: [ SHADOW_HARD ]
    files:
      - Lit/BlinnPhong.vert
      - Lit/BlinnPhong.frag
  - name: Lit.PBR
-   defines: [ SHADOW_PCF ]
+   defines: [ SHADOW_PCSS ]
    files:
      - Lit/PBR.vert
      - Lit/PBR.frag
@@ -71,6 +72,10 @@ programs:
    files:
      - PostProcessing/Fullscreen.vert
      - Util/HighpassFilter.frag
+ - name: PP.SSAO
+   files:
+     - PostProcessing/Fullscreen.vert
+     - PostPRocessing/SSAO.frag
  - name: PP.Blit
    files:
      - PostProcessing/Fullscreen.vert

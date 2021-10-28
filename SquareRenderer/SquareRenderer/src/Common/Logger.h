@@ -56,11 +56,15 @@ public:
 	static std::string severity(LogSeverity s);
 
 	template<typename ... Args>
+#ifdef _DEBUG
 	static void Debug(const std::string& message, Args ... args)
 	{
 		Logger::getInstance().log(
 			LogSeverity::Debug, string_format(message, args ...));
 	}
+#else
+	static void Debug(const std::string&, Args ...) {}
+#endif
 
 	template<typename ... Args>
 	static void Info(const std::string& message, Args ... args)

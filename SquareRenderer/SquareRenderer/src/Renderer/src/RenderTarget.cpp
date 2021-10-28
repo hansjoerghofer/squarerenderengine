@@ -78,6 +78,11 @@ int RenderTarget::height() const
 	return static_cast<int>(height * std::pow(0.5, m_level));
 }
 
+glm::vec4 RenderTarget::dimensions() const
+{
+	return glm::vec4(width(), height(), 1.f / width(), 1.f / height());
+}
+
 int RenderTarget::level() const
 {
 	return m_level;
@@ -98,6 +103,15 @@ SharedResource::Handle RenderTarget::handle() const
 const std::vector<ITextureSPtr>& RenderTarget::colorTargets() const
 {
 	return m_colorTargets;
+}
+
+ITextureSPtr RenderTarget::colorTarget(size_t index) const
+{
+	if (index < colorTargets().size())
+	{
+		return colorTargets()[index];
+	}
+	return ITextureSPtr();
 }
 
 IDepthAttachmentSPtr RenderTarget::depthBuffer() const

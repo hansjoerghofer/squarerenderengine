@@ -5,7 +5,7 @@
 #include "Renderer/BloomRenderPass.h"
 #include "Renderer/GeometryRenderPass.h"
 
-#include "Texture/ITexture.h"
+#include "Texture/Texture2D.h"
 
 class DefaultPassWidget : public IRenderPassWidget
 {
@@ -51,6 +51,7 @@ public:
 		, m_bloomPass(pass)
 		, m_iterations(pass->iterations())
 		, m_threshold(pass->threshold())
+		, m_intensity(pass->intensity())
 	{
 	}
 
@@ -68,6 +69,10 @@ public:
 		{
 			m_bloomPass->setThreshold(m_threshold);
 		}
+		if (m_intensity != m_bloomPass->intensity())
+		{
+			m_bloomPass->setIntensity(m_intensity);
+		}
 	}
 
 	virtual void draw() override
@@ -78,9 +83,12 @@ public:
 		const int maxIter = 10;
 		const float minThre = .01f;
 		const float maxThre = 10.f;
+		const float minInt = .01f;
+		const float maxInt = 1.f;
 
 		ImGui::SliderScalar("Iterations", ImGuiDataType_S32, &m_iterations, &minIter, &maxIter);
 		ImGui::SliderScalar("Threshold", ImGuiDataType_Float, &m_threshold, &minThre, &maxThre, "%.2f");
+		ImGui::SliderScalar("Intensity", ImGuiDataType_Float, &m_intensity, &minInt, &maxInt, "%.2f");
 
 		constexpr float scale = 1.f;
 		ImGui::Image((void*)(intptr_t)m_bloomPass->blurBuffer()->handle(),
@@ -93,6 +101,8 @@ private:
 	int m_iterations;
 
 	float m_threshold;
+
+	float m_intensity;
 
 	BloomRenderPassSPtr m_bloomPass;
 };

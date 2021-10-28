@@ -1,93 +1,88 @@
-#include "API/GraphicsAPI.h"
 #include "Renderer/BloomRenderPass.h"
-#include "Material/MaterialLibrary.h"
+#include "API/GraphicsAPI.h"
 #include "Material/Material.h"
-#include "Scene/IGeometry.h"
+#include "Material/MaterialLibrary.h"
+#include "Renderer/Renderer.h"
 #include "Renderer/RenderTarget.h"
+#include "Renderer/ResourceManager.h"
+#include "Scene/IGeometry.h"
 #include "Texture/Texture2D.h"
 #include "Texture/TextureDefines.h"
-#include "Renderer/Renderer.h"
-#include "Renderer/ScreenSpaceRenderPass.h"
 
-BloomRenderPass::BloomRenderPass(GraphicsAPISPtr api, MaterialLibrarySPtr matlib, IGeometrySPtr fullscreenTriangle, IRenderTargetSPtr target)
-	: m_api(api)
-	, m_matlib(matlib)
-	, m_fullscreenTriangle(fullscreenTriangle)
-	, m_target(target)
+BloomRenderPass::BloomRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib)
+	: BaseRenderPass("Bloom", resources, matlib)
 {
-	setup();
 }
 
 BloomRenderPass::~BloomRenderPass()
 {
 }
 
-void BloomRenderPass::setup()
+void BloomRenderPass::setup(IRenderTargetSPtr target, Texture2DSPtr screenBuffer)
 {
-	m_pingRT = createColorBuffer(
-			static_cast<int>(m_target->width() * m_scale),
-			static_cast<int>(m_target->height() * m_scale));
+	BaseRenderPass::setup(target);
 
-	m_pongRT = createColorBuffer(m_pingRT->width(), m_pingRT->height());
+	m_sourceBuffer = screenBuffer;
 
-	glm::vec4 dim = glm::vec4();
-	dim.x = static_cast<float>(m_pingRT->width());
-	dim.y = static_cast<float>(m_pingRT->height());
-	dim.z = 1.f / m_pingRT->width();
-	dim.w = 1.f / m_pingRT->height();
+	m_highIntensityBuffer = m_resources->createSimpleColorTarget(
+		m_target->width(), 
+		m_target->height(), 
+		TextureFormat::RGBAHalf,
+		{ TextureFilter::Linear, TextureWrap::Mirror, true, glm::vec4(0) });
+
+	m_pingRT = m_resources->createSimpleColorTarget(m_target, m_scale);
+	m_pongRT = m_resources->createSimpleColorTarget(m_pingRT);
 
 	m_brightpassFilter = m_matlib->instanciate("Util.HighpassFilter", "Highpass");
-	m_brightpassFilter->setUniform("image", m_pingRT->colorTargets()[0]);
+	m_brightpassFilter->setUniform("image", m_sourceBuffer);
 	m_brightpassFilter->setUniform("threshold", m_brightnessThreshold);
-	m_highpassPass = std::make_unique<ScreenSpaceRenderPass>("Highpass", m_fullscreenTriangle, m_brightpassFilter, m_pongRT);
 
-	MaterialSPtr matV = m_matlib->instanciate("Util.VerticalBlur");
-	matV->setUniform("image", m_pongRT->colorTargets()[0]);
-	matV->setUniform("dim", dim);
-	m_verticalBlurIt = std::make_unique<ScreenSpaceRenderPass>("VerticalBlur_It", m_fullscreenTriangle, matV, m_pingRT);
+	m_downsampling = m_matlib->instanciate("PP.Blit", "Downsampling");
+	m_downsampling->setUniform("image", m_highIntensityBuffer->colorTarget());
+	m_downsampling->setUniform("level", std::ceil(std::log2( 1 / m_scale )));
 
-	MaterialSPtr matH = m_matlib->instanciate("Util.HorizontalBlur");
-	matH->setUniform("image", m_pingRT->colorTargets()[0]);
-	matH->setUniform("dim", dim);
-	m_horizontalBlurIt = std::make_unique<ScreenSpaceRenderPass>("HorizontalBlur_It", m_fullscreenTriangle, matH, m_pongRT);
+	m_verticalBlur = m_matlib->instanciate("Util.VerticalBlur");
+	m_verticalBlur->setUniform("image", m_pongRT->colorTarget());
+	m_verticalBlur->setUniform("dim", m_pongRT->dimensions());
 
-	MaterialSPtr matBlit = m_matlib->instanciate("PP.Blit", "BloomBlend");
-	//matBlit->setUniform("screenTexture", m_upsampledRT->colorTargets()[0]);
-	matBlit->setUniform("screenTexture", m_pongRT->colorTargets()[0]);
-	RendererState blendState = RendererState::Blit();
-	blendState.clearColor = false;
-	blendState.blendSrc = BlendFactor::One;
-	blendState.blendDst = BlendFactor::One;
-	m_blendPass = std::make_unique<ScreenSpaceRenderPass>("BlendBloom", m_fullscreenTriangle, matBlit, m_target, blendState);
+	m_horizontalBlur = m_matlib->instanciate("Util.HorizontalBlur");
+	m_horizontalBlur->setUniform("image", m_pingRT->colorTarget());
+	m_horizontalBlur->setUniform("dim", m_pingRT->dimensions());
+
+	m_blendAdd = m_matlib->instanciate("PP.Blit", "BloomBlend");
+	m_blendAdd->setUniform("image", m_pongRT->colorTarget());
 }
 
-void BloomRenderPass::render(Renderer& renderer) const
+void BloomRenderPass::renderInternal(Renderer& renderer) const
 {
-	// downsample
-	renderer.blit(m_target, m_pingRT);
-
 	// extract high luminance values
-	m_highpassPass->render(renderer);
+	blit(renderer, m_highIntensityBuffer, m_brightpassFilter);
+
+	renderer.regenerateMipmaps(m_highIntensityBuffer->colorTarget());
+
+	// downsample
+	blit(renderer, m_pongRT, m_downsampling);
 
 	// blur
 	for (int i = 0; i < m_numBlurIterations; ++i)
 	{
-		m_verticalBlurIt->render(renderer);
-		m_horizontalBlurIt->render(renderer);
+		blit(renderer, m_pingRT, m_verticalBlur);
+		blit(renderer, m_pongRT, m_horizontalBlur);
 	}
 
 	// blend with output
-	m_blendPass->render(renderer);
+	blit(renderer, m_target, m_blendAdd, RendererState::Add());
 }
 
 void BloomRenderPass::update(double /*deltaTime*/)
 {
 	m_brightpassFilter->setUniform("threshold", m_brightnessThreshold);
+	m_brightpassFilter->setUniform("intensity", m_intensity);
 }
 
-ITextureSPtr BloomRenderPass::blurBuffer() const
+Texture2DSPtr BloomRenderPass::blurBuffer() const
 {
-	return m_pongRT->colorTargets()[0];
+	return m_pongRT->colorTargetAs<Texture2D>();
 }
 
 int BloomRenderPass::iterations() const
@@ -110,40 +105,12 @@ void BloomRenderPass::setThreshold(float value)
 	m_brightnessThreshold = value;
 }
 
-RenderTargetSPtr BloomRenderPass::createColorBuffer(int width, int height)
+float BloomRenderPass::intensity() const
 {
-	TextureSampler sampler;
-	sampler.mipmapping = false;
-	sampler.wrap = TextureWrap::Mirror;
-
-	RenderTargetSPtr rt = std::make_shared<RenderTarget>(
-		std::make_shared<Texture2D>(width, height,
-			TextureFormat::RGBAHalf, sampler));
-
-	if (m_api->allocate(rt))
-	{
-		return rt;
-	}
-
-	return nullptr;
+	return m_intensity;
 }
 
-const std::string& BloomRenderPass::name() const
+void BloomRenderPass::setIntensity(float value)
 {
-	return m_name;
-}
-
-IRenderTargetSPtr BloomRenderPass::target() const
-{
-	return m_target;
-}
-
-bool BloomRenderPass::isEnabled() const
-{
-	return m_enabled;
-}
-
-void BloomRenderPass::setEnabled(bool flag)
-{
-	m_enabled = flag;
+	m_intensity = value;
 }

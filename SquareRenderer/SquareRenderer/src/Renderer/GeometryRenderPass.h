@@ -1,17 +1,14 @@
 #pragma once
 
-#include "Renderer/IRenderPass.h"
+#include "Common/Timer.h"
+
+#include "Renderer/BaseRenderPass.h"
 #include "Renderer/RendererState.h"
 
-#include <vector>
-
-struct RendererState;
-DECLARE_PTRS(Material);
-DECLARE_PTRS(Renderer);
 DECLARE_PTRS(IDrawable);
 DECLARE_PTRS(GeometryRenderPass);
 
-class GeometryRenderPass : public IRenderPass
+class GeometryRenderPass : public BaseRenderPass
 {
 public:
 
@@ -30,19 +27,9 @@ public:
         MaterialSPtr overrideMaterial = nullptr;
     };
 
-    GeometryRenderPass(const Data& command);
-
-    GeometryRenderPass(Data&& command);
+    GeometryRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib, const Data& command);
 
     virtual ~GeometryRenderPass();
-
-    const std::string& name() const override;
-
-    virtual IRenderTargetSPtr target() const override;
-
-    virtual void render(Renderer& renderer) const override;
-
-    virtual void update(double deltaTime) override;
 
     virtual bool isEnabled() const override;
 
@@ -53,6 +40,8 @@ public:
     bool wireframeMode() const;
 
 protected:
+
+    virtual void renderInternal(Renderer& renderer) const override;
 
     Data m_data;
 };

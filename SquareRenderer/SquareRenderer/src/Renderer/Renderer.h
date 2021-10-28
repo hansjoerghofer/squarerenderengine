@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Common/Macros.h"
-#include "Common/Logger.h"
-#include "Application/GL.h"
 #include "Renderer/RendererState.h"
 #include "Texture/TextureDefines.h"
 #include "Scene/IGeometryVisitor.h"

@@ -31,6 +31,7 @@ public:
 
 	virtual int width() const override;
 	virtual int height() const override;
+	virtual glm::vec4 dimensions() const override;
 	virtual SharedResource::Handle handle() const override;
 
 	float dpiScaling() const;

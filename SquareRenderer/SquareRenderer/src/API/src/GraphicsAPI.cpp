@@ -1241,3 +1241,51 @@ bool GraphicsAPI::checkError(const char* file, int line)
     }
     return errorCode == GL_NO_ERROR;
 }
+
+GraphicsAPI::ScopedDebugMarker::ScopedDebugMarker(const std::string& name)
+{
+    /*glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0,
+        GL_DEBUG_SEVERITY_NOTIFICATION, static_cast<GLsizei>(name.length()), name.c_str());*/
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, static_cast<GLsizei>(name.length()), name.c_str());
+}
+
+GraphicsAPI::ScopedDebugMarker::~ScopedDebugMarker()
+{
+    glPopDebugGroup();
+}
+
+GPUTimer::GPUTimer()
+{
+    GLuint handle;
+    glGenQueries(1, &handle);
+
+    m_handle = static_cast<unsigned int>(handle);
+}
+
+GPUTimer::~GPUTimer()
+{
+    GLuint handle = static_cast<GLuint>(m_handle);
+    glDeleteQueries(1, &handle);
+}
+
+void GPUTimer::begin()
+{
+    glBeginQuery(GL_TIME_ELAPSED, static_cast<GLuint>(m_handle));
+}
+
+void GPUTimer::end()
+{
+    glEndQuery(GL_TIME_ELAPSED);
+}
+
+unsigned long long GPUTimer::fetchElapsedNs()
+{
+    GLuint64 elapsed;
+    glGetQueryObjectui64v(static_cast<GLuint>(m_handle), GL_QUERY_RESULT, &elapsed);
+    return static_cast<unsigned long long>(elapsed);
+}
+
+double GPUTimer::fetchElapsedMs()
+{
+    return fetchElapsedNs() * 1e-6;
+}

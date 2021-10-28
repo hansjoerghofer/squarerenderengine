@@ -16,7 +16,7 @@ struct CameraUniformBlock
 #pragma warning( push )
 #pragma warning( disable : 4324 )
 
-constexpr auto MAX_LIGHT_COUNT = 1;
+constexpr auto MAX_LIGHT_COUNT = 2;
 struct LightsUniformBlock
 {
 	alignas(16) glm::vec4 ambientColor;
@@ -27,7 +27,7 @@ struct LightsUniformBlock
 
 	// shadow mapping
 	alignas(16) glm::mat4 lightsMatrix[MAX_LIGHT_COUNT];
-	alignas(16) int shadowMapIndex[MAX_LIGHT_COUNT];
+	alignas(16) glm::vec4 shadowMapIndex[MAX_LIGHT_COUNT]; // TODO check, using scalar does not work as expected!
 };
 
 #pragma warning( pop )

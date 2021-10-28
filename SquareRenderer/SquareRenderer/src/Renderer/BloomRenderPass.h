@@ -1,37 +1,27 @@
 #pragma once
-#include "Renderer/IRenderPass.h"
+#include "Renderer/BaseRenderPass.h"
 
-DECLARE_PTRS(GraphicsAPI);
 DECLARE_PTRS(Material);
 DECLARE_PTRS(MaterialLibrary);
 DECLARE_PTRS(RenderTarget);
 DECLARE_PTRS(IRenderTarget);
+DECLARE_PTRS(Texture2D);
 DECLARE_PTRS(IGeometry);
 DECLARE_PTRS(BloomRenderPass);
 
-class BloomRenderPass : public IRenderPass
+class BloomRenderPass : public BaseRenderPass
 {
 public:
 
-	BloomRenderPass(GraphicsAPISPtr api, MaterialLibrarySPtr matlib, IGeometrySPtr fullscreenTriangle, IRenderTargetSPtr target);
+	BloomRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib);
 
-	~BloomRenderPass();
+	virtual ~BloomRenderPass();
 
-	void setup();
-
-	virtual const std::string& name() const override;
-
-	virtual IRenderTargetSPtr target() const override;
-
-	virtual bool isEnabled() const override;
-
-	virtual void setEnabled(bool flag) override;
-
-	virtual void render(Renderer& renderer) const override;
+	void setup(IRenderTargetSPtr target, Texture2DSPtr screenBuffer);
 
 	virtual void update(double deltaTime) override;
 
-	ITextureSPtr blurBuffer() const;
+	Texture2DSPtr blurBuffer() const;
 
 	int iterations() const;
 
@@ -41,36 +31,32 @@ public:
 
 	void setThreshold(float value);
 
+	float intensity() const;
+
+	void setIntensity(float value);
+
 protected:
 
-	RenderTargetSPtr createColorBuffer(int width, int height);
-
-	std::string m_name = "Bloom";
-
-	bool m_enabled = true;
+	void renderInternal(Renderer& renderer) const override;
 
 	int m_numBlurIterations = 1;
 
-	float m_scale = .25f;
+	float m_scale = .125f;
 
-	float m_brightnessThreshold = 1.f;
+	float m_brightnessThreshold = 2.f;
 
-	GraphicsAPISPtr m_api;
-	MaterialLibrarySPtr m_matlib;
+	float m_intensity = 0.25f;
 
-	IRenderTargetSPtr m_target;
-
-	IGeometrySPtr m_fullscreenTriangle;
-
+	MaterialSPtr m_downsampling;
 	MaterialSPtr m_brightpassFilter;
+	MaterialSPtr m_verticalBlur;
+	MaterialSPtr m_horizontalBlur;
+	MaterialSPtr m_blendAdd;
 
+	Texture2DSPtr m_sourceBuffer;
+
+	RenderTargetSPtr m_highIntensityBuffer;
 	RenderTargetSPtr m_pingRT;
 	RenderTargetSPtr m_pongRT;
-
-	IRenderPassUPtr m_highpassPass;
-	IRenderPassUPtr m_verticalBlur0;
-	IRenderPassUPtr m_verticalBlurIt;
-	IRenderPassUPtr m_horizontalBlurIt;
-	IRenderPassUPtr m_blendPass;
 };
 

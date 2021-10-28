@@ -8,6 +8,12 @@ DECLARE_PTRS(IRenderTarget);
 DECLARE_PTRS(IRenderPass);
 DECLARE_PTRS(Renderer);
 
+struct RenderStatisticsData
+{
+    double cpuTimeMs = 0.0;
+    double gpuTimeMs = 0.0;
+};
+
 class IRenderPass
 {
 public:
@@ -25,4 +31,6 @@ public:
     virtual void render(Renderer& renderer) const = 0;
 
     virtual void update(double deltaTime) = 0;
+
+    virtual RenderStatisticsData renderStatistics() const = 0;
 };

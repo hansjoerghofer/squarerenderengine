@@ -1,41 +1,27 @@
 #include "Renderer/RenderEngine.h"
-#include "Renderer/RenderTarget.h"
-#include "Renderer/DepthBuffer.h"
-#include "Renderer/IRenderPass.h"
-#include "Renderer/GeometryRenderPass.h"
-#include "Renderer/ScreenSpaceRenderPass.h"
-#include "Renderer/BloomRenderPass.h"
-
-#include "Common/Logger.h"
-#include "Common/Timer.h"
-#include "Common/Math3D.h"
-
 #include "API/GraphicsAPI.h"
-#include "API/SharedResource.h"
-
+#include "Common/Logger.h"
+#include "Material/MaterialLibrary.h"
+#include "Renderer/BloomRenderPass.h"
+#include "Renderer/Camera.h"
+#include "Renderer/DepthBuffer.h"
+#include "Renderer/GeometryRenderPass.h"
+#include "Renderer/GizmoHelper.h"
+#include "Renderer/Primitive.h"
+#include "Renderer/RenderTarget.h"
+#include "Renderer/ResourceManager.h"
+#include "Renderer/ShadowMappingRenderPass.h"
+#include "Renderer/SSAORenderPass.h"
+#include "Renderer/TonemappingRenderPass.h"
+#include "Scene/DirectionalLight.h"
+#include "Scene/MeshBuilder.h"
+#include "Scene/PointLight.h"
+#include "Scene/PrimitiveSet.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
-#include "Scene/Mesh.h"
-#include "Scene/PrimitiveSet.h"
-#include "Scene/SceneNode.h"
-#include "Scene/DirectionalLight.h"
-#include "Scene/PointLight.h"
-#include "Scene/MeshBuilder.h"
-
-#include "Material/Material.h"
-#include "Material/MaterialLibrary.h"
-#include "Material/ShaderProgram.h"
-
-#include "Renderer/Camera.h"
-#include "Renderer/Primitive.h"
-#include "Renderer/UniformBlockData.h"
-#include "Renderer/GizmoHelper.h"
-
-#include "Texture/Texture2D.h"
 #include "Texture/Cubemap.h"
-
+#include "Texture/Texture2D.h"
 #include "UniformBlockDataStructs.h"
-
 #include <set>
 
 static const glm::mat4 CUBE_P = glm::perspective(glm::radians(90.f), 1.f, .1f, 10.f);
@@ -52,6 +38,7 @@ RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 	: m_api(api)
 	, m_matlib(matlib)
 	, m_renderer(new Renderer())
+	, m_resources(new ResourceManager(api))
 	, m_cameraUniformBlock(new UniformBlockData<CameraUniformBlock>(0))
 	, m_lightsUniformBlock(new UniformBlockData<LightsUniformBlock>(1))
 {
@@ -72,18 +59,6 @@ RenderEngine::RenderEngine(GraphicsAPISPtr api, MaterialLibrarySPtr matlib)
 		// bind uniform blocks to all programs who need it
 		program->bindUniformBlock("CameraUBO", m_cameraUniformBlock->bindingPoint());
 		program->bindUniformBlock("LightsUBO", m_lightsUniformBlock->bindingPoint());
-	}
-
-	if (!m_fullscreenTriangle)
-	{
-		IGeometrySPtr fullscreenTriangle = MeshBuilder::screenTriangle();
-		if (!m_api->allocate(fullscreenTriangle))
-		{
-			Logger::Warning("Error while allocating fullscreen triangle buffer.");
-			return;
-		}
-
-		m_fullscreenTriangle = fullscreenTriangle;
 	}
 }
 
@@ -144,13 +119,13 @@ void RenderEngine::update(double deltaTime)
 		rebuildCommandList();
 	}
 
-	updateLightsUniformData();
-	updateCameraUniformData(m_mainCamera);
-
 	for (const auto& pass : m_renderPassList)
 	{
 		pass->update(deltaTime);
 	}
+
+	updateLightsUniformData();
+	updateCameraUniformData(m_mainCamera);
 }
 
 void RenderEngine::rebuildCommandList()
@@ -169,9 +144,13 @@ void RenderEngine::rebuildCommandList()
 			static_cast<int>(m_outputTarget->height() * m_scale),
 			TextureFormat::RGBAFloat);
 
-		m_gBuffer = std::make_shared<RenderTarget>(
-			colorBuffer, 
-			DepthBufferFormat::Depth24Stencil8);
+		Texture2DSPtr normalsBuffer = std::make_shared<Texture2D>(
+			colorBuffer->width(),
+			colorBuffer->height(),
+			TextureFormat::RGBAFloat);
+
+		std::vector<ITextureSPtr> buffers = { colorBuffer, normalsBuffer };
+		m_gBuffer = std::make_shared<RenderTarget>(std::move(buffers), DepthBufferFormat::Depth24Stencil8);
 
 		if (!m_api->allocate(m_gBuffer))
 		{
@@ -183,7 +162,11 @@ void RenderEngine::rebuildCommandList()
 	// scene
 	if (m_scene)
 	{
-		setupShadowMapping();
+		{
+			m_shadowMappingPass = std::make_shared<ShadowMappingRenderPass>(m_resources, m_matlib);
+			m_shadowMappingPass->setup(m_scene);
+			m_renderPassList.push_back(m_shadowMappingPass);
+		}
 
 		GeometryRenderPass::Data cmd;
 		cmd.name = "Opaque Scene";
@@ -191,6 +174,7 @@ void RenderEngine::rebuildCommandList()
 		cmd.state.clearColor = true;
 		//cmd.state.enableWireframe = true;
 		cmd.state.color = glm::vec4(.0f, .0f, .0f, 1);
+		cmd.state.drawBuffers = { DrawBuffer::Attachment0, DrawBuffer::Attachment1 };
 
 		cmd.drawables.reserve(m_scene->nodeNum());
 
@@ -210,22 +194,6 @@ void RenderEngine::rebuildCommandList()
 
 		for (ShaderProgramSPtr program : usedPrograms)
 		{
-			// set shadow maps
-			for (const auto& [light, shadowData] : m_shadowData)
-			{
-				const glm::vec4 shadowDim = glm::vec4(
-					shadowData.data->width(),
-					shadowData.data->height(),
-					1.f / shadowData.data->width(),
-					1.f / shadowData.data->height()
-				);
-				program->setUniformDefault("_shadowMapDim", shadowDim);
-				// TODO create indexed setter
-				program->setUniformDefault(
-					"_shadowMaps[" + std::to_string(shadowData.index) + "]",
-					shadowData.data);
-			}
-
 			// set IBL
 			if (m_ibl.brdf && m_ibl.specular && m_ibl.diffuse)
 			{
@@ -237,7 +205,7 @@ void RenderEngine::rebuildCommandList()
 
 		// opaque scene rendering
 		m_renderPassList.emplace_back(
-			new GeometryRenderPass(std::move(cmd)));
+			new GeometryRenderPass(m_resources, m_matlib, cmd));
 
 		// skybox rendering
 		MaterialSPtr skyboxMat = m_matlib->instanciate("Util.Skybox");
@@ -261,7 +229,7 @@ void RenderEngine::rebuildCommandList()
 				cmd2.drawables.emplace_back(new Primitive(geometry, skyboxMat));
 
 				m_renderPassList.emplace_back(
-					new GeometryRenderPass(std::move(cmd2)));
+					new GeometryRenderPass(m_resources, m_matlib, cmd2));
 			}			
 		}
 	}
@@ -283,7 +251,7 @@ void RenderEngine::rebuildCommandList()
 		cmd.drawables.push_back(m_gizmos);
 
 		m_renderPassList.emplace_back(
-			new GeometryRenderPass(std::move(cmd)));
+			new GeometryRenderPass(m_resources, m_matlib, cmd));
 	}
 }
 
@@ -352,69 +320,23 @@ void RenderEngine::setupPostProcessing()
 		return;
 	}
 
-	m_renderPassList.emplace_back(new BloomRenderPass(m_api, m_matlib, m_fullscreenTriangle, m_gBuffer));
+	{
+		BloomRenderPassSPtr bloomPass = std::make_shared<BloomRenderPass>(m_resources, m_matlib);
+		bloomPass->setup(m_gBuffer, m_gBuffer->colorTargetAs<Texture2D>());
+		m_renderPassList.push_back(bloomPass);
+	}
 
-	//const float bloomScale = 1.f;// m_scale;
-	//glm::vec4 dim = glm::vec4();
-
-	// bloom
-	//if(false)
-	//{
-	//	RenderTargetSPtr rt = screenSpaceTarget(bloomScale);
-
-	//	dim.x = static_cast<float>(rt->width());
-	//	dim.y = static_cast<float>(rt->height());
-	//	dim.z = 1.f / rt->width();
-	//	dim.w = 1.f / rt->height();
-
-	//	MaterialSPtr mat = m_matlib->instanciate("Util.HighpassFilter", "Highpass");
-	//	mat->setUniform("image", getLastColorTarget());
-	//	mat->setUniform("threshold", 1.f);
-
-	//	m_renderPassList.emplace_back(new ScreenSpaceRenderPass("Blur", m_fullscreenTriangle, mat, rt));
-	//}
-
-	//if(false)
-	//{
-	//	RenderTargetSPtr ping = screenSpaceTarget(bloomScale);
-	//	RenderTargetSPtr pong = screenSpaceTarget(bloomScale);
-
-	//	MaterialSPtr matV = m_matlib->instanciate("Util.VerticalBlur");
-	//	matV->setUniform("image", getLastColorTarget());
-	//	matV->setUniform("dim", dim);
-	//	m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-	//		"VerticalBlur_0", m_fullscreenTriangle, matV, ping));
-
-	//	MaterialSPtr matH = m_matlib->instanciate("Util.HorizontalBlur");
-	//	matH->setUniform("image", getLastColorTarget());
-	//	matH->setUniform("dim", dim);
-	//	m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-	//		"HorizontalBlur_0", m_fullscreenTriangle, matH, pong));
-
-	//	for (int i = 1; i < 4; ++i)
-	//	{
-	//		// vertical
-	//		MaterialSPtr mat1 = m_matlib->instanciate("Util.VerticalBlur");
-	//		mat1->setUniform("image", getLastColorTarget());
-	//		mat1->setUniform("dim", dim);
-	//		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-	//			"VerticalBlur_" + std::to_string(i), m_fullscreenTriangle, mat1, ping));
-
-	//		// horizontal
-	//		MaterialSPtr mat2 = m_matlib->instanciate("Util.HorizontalBlur");
-	//		mat2->setUniform("image", getLastColorTarget());
-	//		mat2->setUniform("dim", dim);
-	//		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-	//			"HorizontalBlur_" + std::to_string(i), m_fullscreenTriangle, mat2, pong));
-	//	}
-	//}
+	// TODO cannot render to both PP passes! why? draw/read conflict?
+	/*{
+		SSAORenderPassSPtr ssaoPass = std::make_shared<SSAORenderPass>(m_resources, m_matlib);
+		ssaoPass->setup(m_gBuffer, m_gBuffer->colorTargetAs<Texture2D>(0), m_gBuffer->colorTargetAs<Texture2D>(1));
+		m_renderPassList.push_back(ssaoPass);
+	}*/
 
 	{
-		MaterialSPtr mat = m_matlib->instanciate("PP.Tonemapping", "Tonemapping");
-		mat->setUniform("screenTexture", getLastColorTarget());
-
-		m_renderPassList.emplace_back(new ScreenSpaceRenderPass(
-			"Tonemapping", m_fullscreenTriangle, mat, m_outputTarget));
+		TonemappingRenderPassSPtr tonemappingPass = std::make_shared<TonemappingRenderPass>(m_resources, m_matlib);
+		tonemappingPass->setup(m_outputTarget, m_gBuffer);
+		m_renderPassList.push_back(tonemappingPass);
 	}
 }
 
@@ -460,99 +382,6 @@ void RenderEngine::setRenderingScale(double scale)
 const std::list<IRenderPassSPtr>& RenderEngine::renderPasses() const
 {
 	return m_renderPassList;
-}
-
-void RenderEngine::setupShadowMapping()
-{
-	std::vector<IDrawableSPtr> shadowCasters;
-	shadowCasters.reserve(m_scene->nodeNum());
-
-	auto t = m_scene->traverser();
-	while (t.hasNext())
-	{
-		IDrawableSPtr drawable = t.next();
-		if (drawable->geometry())
-		{
-			shadowCasters.push_back(drawable);
-		}
-	}
-
-	const int shadowMapWidth = 1024;
-	const int shadowMapHeight = 1024;
-
-	const TextureSampler depthMapSampler = { 
-		TextureFilter::Linear, 
-		TextureWrap::ClampToBorder, 
-		false, glm::vec4(1,1,1,1) 
-	};
-
-	const glm::mat4 biasMatrix(
-		0.5, 0.0, 0.0, 0.0,
-		0.0, 0.5, 0.0, 0.0,
-		0.0, 0.0, 0.5, 0.0,
-		0.5, 0.5, 0.5, 1.0);
-
-	BoundingBox sceneBounds = m_scene->sceneBounds();
-
-	int index = 0;
-	for (ILightsourceSPtr light : m_scene->lights())
-	{
-		if (!light->isShadowCaster()) continue;
-
-		if (light->type() != LightsourceType::Directional) continue;
-
-		// create shadow FBO
-		Texture2DSPtr shadowMap = std::make_shared<Texture2D>(shadowMapWidth, shadowMapHeight,
-			TextureFormat::DepthFloat, depthMapSampler);
-
-		RenderTargetSPtr shadowMapTarget = std::make_shared<RenderTarget>(
-			std::make_shared<DepthTextureWrapper>(shadowMap));
-
-		if (!m_api->allocate(shadowMapTarget))
-		{
-			continue;
-		}
-
-		DirectionalLightSPtr dirLight = std::static_pointer_cast<DirectionalLight>(light);
-
-		// create light Camera
-		const glm::vec3 lightDirection = dirLight->direction();
-		glm::mat4 lightView = glm::lookAt(
-			sceneBounds.center(),
-			sceneBounds.center() + lightDirection,
-			glm::vec3(0, 1, 0));
-
-		BoundingBox cameraVolume = lightView * sceneBounds;
-
-		glm::mat4 lightProj = glm::ortho(
-			cameraVolume.min().x, cameraVolume.max().x,
-			cameraVolume.min().y, cameraVolume.max().y,
-			cameraVolume.min().z, cameraVolume.max().z );
-
-		glm::mat4 worldToLight = lightProj * lightView;
-
-		MaterialSPtr shadowMat = m_matlib->instanciate("Util.ShadowMapping");
-		shadowMat->setUniform("worldToLight", worldToLight);
-
-		GeometryRenderPass::Data cmd;
-		cmd.name = "ShadowMapping";
-		cmd.target = shadowMapTarget;
-		cmd.state.clearColor = false;
-		cmd.state.writeColor = false;
-		cmd.state.depthOffset = glm::vec2(4., 1.);
-		cmd.overrideMaterial = shadowMat;
-		cmd.drawables = shadowCasters;
-		m_renderPassList.emplace_back(new GeometryRenderPass(std::move(cmd)));
-
-		ShadowData sData = ShadowData();
-		sData.index = index;
-		sData.lightMatrice = biasMatrix * worldToLight;
-		sData.data = shadowMap;
-		sData.material = shadowMat;
-		m_shadowData[dirLight] = std::move(sData);
-
-		++index;
-	}
 }
 
 void RenderEngine::updateCameraUniformData(CameraSPtr camera)
@@ -613,15 +442,14 @@ void RenderEngine::updateLightsUniformData()
 		data.lightsPosWS[data.numLights] = vec;
 		data.lightsColor[data.numLights] = glm::vec4(light->color(), light->intensity());
 		
-		ShadowData shadowData = ShadowData();
-		auto found = m_shadowData.find(light);
-		if (found != m_shadowData.end())
+		ShadowData shadowData;
+		auto found = m_shadowMappingPass->shadowData().find(light);
+		if (found != m_shadowMappingPass->shadowData().end())
 		{
 			shadowData = found->second;
 		}
-		// TODO update shadow matrix/material if light transform changed!
 		data.lightsMatrix[data.numLights] = shadowData.lightMatrice;
-		data.shadowMapIndex[data.numLights] = shadowData.index;
+		data.shadowMapIndex[data.numLights] = glm::vec4(shadowData.index, 0, 0, 0);
 		
 		data.numLights++;
 	}
@@ -676,7 +504,7 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 	cmd.state.depthTestMode = DepthTest::Equal;
 	cmd.state.writeDepth = false;
 
-	const auto pass = GeometryRenderPass(std::move(cmd));
+	const auto pass = GeometryRenderPass(m_resources, m_matlib, cmd);
 	pass.render(*m_renderer);
 
 	m_renderer->regenerateMipmaps(target);
@@ -745,7 +573,7 @@ void RenderEngine::hdriToDiffuseIrradiance(CubemapSPtr hdri, CubemapSPtr diffIrr
 	cmd.state.clearDepth = false;
 	cmd.state.seamlessCubemapFiltering = true;
 
-	const auto pass = GeometryRenderPass(std::move(cmd));
+	const auto pass = GeometryRenderPass(m_resources, m_matlib, cmd);
 	pass.render(*m_renderer);
 }
 
@@ -772,15 +600,13 @@ void RenderEngine::hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIr
 		mat->setUniform("VP", CUBE_FACE_VP[i], i);
 	}
 
-	GeometryRenderPass::Data cmd;
-	cmd.name = "HDRI2DiffuseIrradiance";
-	cmd.drawables.emplace_back(new Primitive(cubeGeom, mat));
-
-	cmd.state.cullingMode = Culling::Front;
-	cmd.state.depthTestMode = DepthTest::None;
-	cmd.state.writeDepth = false;
-	cmd.state.clearDepth = false;
-	cmd.state.seamlessCubemapFiltering = true;
+	RendererState state;
+	state.cullingMode = Culling::Front;
+	state.depthTestMode = DepthTest::None;
+	state.writeDepth = false;
+	state.clearDepth = false;
+	state.seamlessCubemapFiltering = true;
+	m_renderer->applyState(state);
 
 	// --- render ----
 	const unsigned int resolution = specIrradiance->width();
@@ -795,10 +621,9 @@ void RenderEngine::hdriToSpecularIrradiance(CubemapSPtr hdri, CubemapSPtr specIr
 		{
 			return;
 		}
-		cmd.target = rt;
-
-		const auto pass = GeometryRenderPass(cmd);
-		pass.render(*m_renderer);
+		
+		m_renderer->setTarget(rt);
+		m_renderer->render(cubeGeom, mat);
 	}
 }
 
@@ -816,15 +641,9 @@ void RenderEngine::generateIntegratedBRDF(Texture2DSPtr integratedBRDF)
 		return;
 	}
 
-	GeometryRenderPass::Data cmd;
-	cmd.name = "GenerateIntegratedBRDF";
-	cmd.target = rt;
-	cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, brdfMat));
-
-	cmd.state = RendererState::Blit();
-
-	const auto pass = GeometryRenderPass(std::move(cmd));
-	pass.render(*m_renderer);
+	m_renderer->setTarget(rt);
+	m_renderer->applyState(RendererState::Blit());
+	m_renderer->render(m_resources->fullscreenGeometry(), brdfMat);
 }
 
 void RenderEngine::packTextures(
@@ -851,15 +670,8 @@ void RenderEngine::packTextures(
 	mat->setUniform("blueChannel", sourceBlue);
 	mat->setUniform("alphaChannel", sourceAlpha);
 
-	GeometryRenderPass::Data cmd;
-	cmd.name = "CombineTextureChannels";
-	cmd.target = rt;
-	cmd.drawables.emplace_back(new Primitive(m_fullscreenTriangle, mat));
-
-	cmd.state = RendererState::Blit();
-
-	const auto pass = GeometryRenderPass(std::move(cmd));
-	pass.render(*m_renderer);
-
+	m_renderer->setTarget(rt);
+	m_renderer->applyState(RendererState::Blit());
+	m_renderer->render(m_resources->fullscreenGeometry(), mat);
 	m_renderer->regenerateMipmaps(target);
 }

@@ -34,13 +34,29 @@ public:
 
 	virtual int height() const override;
 
+	virtual glm::vec4 dimensions() const override;
+
 	virtual int level() const;
 
 	SharedResource::Handle handle() const override;
 
 	const std::vector<ITextureSPtr>& colorTargets() const;
 
+	ITextureSPtr colorTarget(size_t index = 0) const;
+
+	template<typename T>
+	std::shared_ptr<T> colorTargetAs(size_t index = 0) const
+	{
+		return std::static_pointer_cast<T>(colorTarget(index));
+	}
+
 	IDepthAttachmentSPtr depthBuffer() const;
+
+	template<typename T>
+	std::shared_ptr<T> depthBufferAs() const
+	{
+		return std::static_pointer_cast<T>(depthBuffer());
+	}
 
 	void link(IRenderTargetResourceUPtr resource);
 

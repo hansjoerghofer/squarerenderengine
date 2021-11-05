@@ -5,11 +5,8 @@ out vec4 FragColor;
 in vec2 TexCoords;
  
 uniform sampler2D image;
-
 uniform float threshold = 1;
-
 uniform float intensity = 1;
-
 uniform float maxBrightness = 10;
 
 void main(void) 

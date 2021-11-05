@@ -50,7 +50,3 @@ void SSAORenderPass::renderInternal(Renderer& renderer) const
 
 	blit(renderer, m_target, m_blitMaterial);
 }
-
-void SSAORenderPass::update(double /*deltaTime*/)
-{
-}

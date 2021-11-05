@@ -74,7 +74,7 @@ void BloomRenderPass::renderInternal(Renderer& renderer) const
 	blit(renderer, m_target, m_blendAdd, RendererState::Add());
 }
 
-void BloomRenderPass::update(double /*deltaTime*/)
+void BloomRenderPass::updateInternal(double /*deltaTime*/)
 {
 	m_brightpassFilter->setUniform("threshold", m_brightnessThreshold);
 	m_brightpassFilter->setUniform("intensity", m_intensity);

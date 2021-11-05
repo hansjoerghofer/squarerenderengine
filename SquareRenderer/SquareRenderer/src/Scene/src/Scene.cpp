@@ -70,7 +70,7 @@ SceneNodeSPtr Scene::Traverser::next()
 	SceneNodeSPtr node = m_stack.top();
 	m_stack.pop();
 
-	const std::list<SceneNodeSPtr>& children = node->children();
+	const auto& children = node->children();
 	for (auto i = children.rbegin(); i != children.rend(); ++i)
 	{
 		m_stack.push(*i);

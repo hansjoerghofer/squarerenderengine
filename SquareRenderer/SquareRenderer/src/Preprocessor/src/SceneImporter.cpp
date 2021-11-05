@@ -2,6 +2,7 @@
 #include "Preprocessor/ModelLoader.h"
 #include "Preprocessor/TextureImporter.h"
 #include "Common/Logger.h"
+#include "Common/MathUtils.h"
 #include "API/GraphicsAPI.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneNode.h"
@@ -19,9 +20,6 @@
 #include <filesystem>
 
 #undef ASYNC_TEXTURE_IMPORT
-
-constexpr auto PI = 3.141592653589793238462643383279502884;
-constexpr auto DEG2RAD = 1.0 / (2.0 * PI);
 
 namespace YAML 
 {
@@ -312,7 +310,7 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 	SceneUPtr scene = std::make_unique<Scene>(sceneRoot);
 
 	ModelLoader loader(m_matLib);
-	loader.setDefaultProgramName("Lit.PBR");
+	loader.setDefaultProgramName("ForwardLit.PBR");
 
 	YAML::Node config = YAML::LoadFile(filepath);
 
@@ -326,16 +324,9 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 		SceneNodeSPtr modelRootNode = loader.loadFromFile(modelPath);
 		if (modelRootNode)
 		{
-			glm::mat4 transform = modelRootNode->localTransform();
-			
-			glm::mat4 R = glm::eulerAngleYXZ(
-				glm::radians(rotation.y), 
-				glm::radians(rotation.x), 
-				glm::radians(rotation.z));
-			glm::mat4 S = glm::translate(glm::mat4(1), position);
-			glm::mat4 T = glm::scale(glm::mat4(1), glm::vec3(scale));
-
-			modelRootNode->setLocalTransform(S * T * R * transform);
+			const glm::mat4 transform = modelRootNode->localTransform();
+			const glm::mat4 M = MathUtils::createTransform(rotation, position, glm::vec3(scale));
+			modelRootNode->setLocalTransform(M * transform);
 
 			sceneRoot->addChild(modelRootNode);
 		}
@@ -388,12 +379,14 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 			const glm::vec3 color = light["color"].as<glm::vec3>(glm::vec3(1, 1, 1));
 			const glm::vec2 position = light["position"].as<glm::vec2>(glm::vec2(0.5,0.5));
 
-			const glm::vec2 sphericalCoords = glm::vec2((1.f-position.x) * 2.f * PI, position.y * PI);
-			const glm::vec3 direction = -glm::vec3(
-				std::sinf(sphericalCoords.x) * std::sinf(sphericalCoords.y),
-				std::cosf(sphericalCoords.y),
-				std::cosf(sphericalCoords.x) * std::sinf(sphericalCoords.y)
-			);
+			const glm::vec3 direction = MathUtils::lonLat2Dir(position);
+
+			// quick test if function work as expected (TODO put in actual Unit test)
+			const glm::vec2 uv = MathUtils::dir2LonLat(direction);
+			if (!MathUtils::numericClose(uv, position))
+			{
+				throw new std::exception("lonLat2Dir != dir2LonLat!");
+			}
 
 			scene->addLight(std::make_shared<DirectionalLight>(
 				direction, color, intensity, true));
@@ -418,6 +411,15 @@ SceneUPtr SceneImporter::importFromFile(const std::string& filepath)
 				if (program)
 				{
 					material->setProgram(program);
+				}
+			}
+
+			if (materialOverride["layer"])
+			{
+				const std::string layerStr = materialOverride["layer"].as<std::string>();
+				if (layerStr == "Transparent")
+				{
+					material->setLayer(Material::Layer::Transparent);
 				}
 			}
 

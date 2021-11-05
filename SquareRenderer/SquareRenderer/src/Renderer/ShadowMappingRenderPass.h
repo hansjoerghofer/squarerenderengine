@@ -2,7 +2,7 @@
 
 #include "Common/Macros.h"
 #include "Common/Math3D.h"
-#include "Renderer/BaseRenderPass.h"
+#include "Renderer/BaseGeometryRenderPass.h"
 #include "Renderer/RendererState.h"
 
 DECLARE_PTRS(Scene);
@@ -22,7 +22,7 @@ struct ShadowData
 	MaterialSPtr material;
 };
 
-class ShadowMappingRenderPass : public BaseRenderPass
+class ShadowMappingRenderPass : public BaseGeometryRenderPass
 {
 public:
 	ShadowMappingRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib);
@@ -31,12 +31,20 @@ public:
 
 	void setup(SceneSPtr scene);
 
-	virtual void update(double deltaTime) override;
-
 	const std::unordered_map<ILightsourceSPtr, ShadowData>& shadowData() const;
+
+	void setDepthOffsetFactor(float factor);
+
+	void setDepthOffsetUnit(float unit);
+
+	float depthOffsetFactor() const;
+
+	float depthOffsetUnit() const;
 
 private:
 	virtual void renderInternal(Renderer& renderer) const override;
+
+	virtual void updateInternal(double deltaTime) override;
 
 	RendererState m_state;
 

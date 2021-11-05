@@ -1,15 +1,18 @@
 //? #version 450 core
-//! #include "Lights.glsl"
-//! #include "Sampling.glsl"
-
-uniform int pcssBlockerSamples = 16; // [1,64]
-uniform int pcssShadowSamples = 32; // [2,128]
-
-//TODO outsource to light uniform block
-uniform float _lightSize = 10; // [1,100]
+//? #include "Lights.glsl"
+//? #include "Sampling.glsl"
 
 uniform vec4 _shadowMapDim; // resolution (w,h,1/w,1/h)
 uniform sampler2D[_MAX_SIZE_LIGHT] _shadowMaps;
+
+// PCF
+uniform float pcfRadius = 4; // [1,100]
+
+// PCSS
+uniform int pcssBlockerSamples = 16; // [1,64]
+uniform int pcssShadowSamples = 32; // [2,128]
+uniform float lightSize = 10; // [1,100]
+uniform float pcssPenumbraFactor = 1; // [1,100]
 
 //-----------------------------------------------
 //            Shadow Mapping
@@ -47,7 +50,7 @@ float _shadowPCFHammersley(in vec4 position, int index)
     {
         lookup = projCoords;
         sampleOffset = _hammersley(i, SAMPLE_COUNT) * 2 - 1;
-        sampleOffset *= 2;
+        sampleOffset *= pcfRadius;
 
         lookup.xy += _shadowMapDim.zw * sampleOffset;
 
@@ -69,7 +72,7 @@ float _shadowPCSSHammersley(in vec4 position, int index)
     if (receiverDepth > 1.0) return 1;
 
     // blocker search
-    float lightSize = _lightSize * 2;
+    float lightSize2 = lightSize * 2;
     float blockerDepth = 0;
     uint blockedSampleCount = 0;
     const uint BLOCKER_SAMPLE_COUNT = uint(pcssBlockerSamples);
@@ -77,7 +80,7 @@ float _shadowPCSSHammersley(in vec4 position, int index)
     for (uint i = 0u; i < BLOCKER_SAMPLE_COUNT; ++i)
     {
         vec2 sampleOffset = _hammersleyOpt(i, INV_COUNT) * 2 - 1;
-        sampleOffset *= lightSize;
+        sampleOffset *= lightSize2;
 
         vec2 lookup = _shadowMapDim.zw * sampleOffset + projCoords.xy;
         float closestDepth = texture(_shadowMaps[index], lookup).r;
@@ -100,16 +103,16 @@ float _shadowPCSSHammersley(in vec4 position, int index)
     blockerDepth /= blockedSampleCount;
 
     // penumbra estimation
-    float penumbraRadius = lightSize * (receiverDepth - blockerDepth) / blockerDepth;
+    float penumbraRadius = lightSize2 * (receiverDepth - blockerDepth) / blockerDepth;
 
     // filtering
     float visibility = 0;
-    uint SAMPLE_COUNT = uint(pcssShadowSamples);//penumbraRadius > lightSize * 0.1f ? 64u : 32u;
+    uint SAMPLE_COUNT = uint(pcssShadowSamples);//penumbraRadius > lightSize2 * 0.1f ? 64u : 32u;
     float INV_SAMPLE_COUNT = 1.0 / float(SAMPLE_COUNT);
     for (uint i = 0u; i < SAMPLE_COUNT; ++i)
     {
         vec2 sampleOffset = _hammersleyOpt(i, INV_SAMPLE_COUNT) * 2 - 1;
-        sampleOffset *= penumbraRadius;
+        sampleOffset *= penumbraRadius * pcssPenumbraFactor;
 
         vec2 lookup = _shadowMapDim.zw * sampleOffset + projCoords.xy;
         float closestDepth = texture(_shadowMaps[index], lookup.xy).r;

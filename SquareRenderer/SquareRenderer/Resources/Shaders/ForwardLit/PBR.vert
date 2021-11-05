@@ -1,9 +1,10 @@
 #version 450 core
 
+#pragma include ../Includes/Globals.glsl //! #include "../Includes/Globals.glsl"
 #pragma include ../Includes/Common.glsl //! #include "../Includes/Common.glsl"
-#pragma include ../Includes/PBR.glsl //! #include "../Includes/PBR.glsl"
 #pragma include ../Includes/Lights.glsl //! #include "../Includes/Lights.glsl"
 #pragma include ../Includes/Camera.glsl //! #include "../Includes/Camera.glsl"
+#pragma include ../Includes/PBR.glsl //! #include "../Includes/PBR.glsl"
 
 layout (location = 0) in vec3 vPosition;
 layout (location = 1) in vec2 vUV;

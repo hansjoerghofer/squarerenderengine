@@ -3,44 +3,33 @@
 #include "Texture/ITexture.h"
 #include "Texture/Texture2D.h"
 
-RenderTarget::RenderTarget(
-	ITextureSPtr colorTarget, DepthBufferFormat format, int level)
-	: m_colorTargets({ colorTarget })
-	, m_depthBuffer(new DepthBuffer(colorTarget->width(), colorTarget->height(), format))
-	, m_level(level)
-{
-}
-
-RenderTarget::RenderTarget(
-	std::vector<ITextureSPtr>&& colorTargets, DepthBufferFormat format, int level)
-	: m_colorTargets(std::move(colorTargets))
-	, m_depthBuffer(new DepthBuffer(
-		m_colorTargets.front()->width(), 
-		m_colorTargets.front()->height(), format))
-	, m_level(level)
-{
-}
-
-RenderTarget::RenderTarget(
-	ITextureSPtr colorTarget, IDepthAttachmentSPtr depthBuffer, int level)
-	: m_colorTargets({ colorTarget })
+RenderTarget::RenderTarget(const std::vector<ITextureSPtr>& colorTargets, IDepthAttachmentSPtr depthBuffer, int level)
+	: m_colorTargets(colorTargets)
 	, m_depthBuffer(depthBuffer)
 	, m_level(level)
 {
 }
 
-RenderTarget::RenderTarget(
-	std::vector<ITextureSPtr>&& colorTargets, IDepthAttachmentSPtr depthBuffer, int level)
-	: m_colorTargets(std::move(colorTargets))
-	, m_depthBuffer(depthBuffer)
-	, m_level(level)
+RenderTarget::RenderTarget(const std::vector<ITextureSPtr>& colorTargets, DepthBufferFormat format, int level)
+	: RenderTarget(colorTargets, std::make_shared<DepthBuffer>(
+		colorTargets.front()->width(),
+		colorTargets.front()->height(), format), 
+		level)
+{
+}
+
+RenderTarget::RenderTarget(ITextureSPtr colorTarget, DepthBufferFormat format, int level)
+	: RenderTarget(std::vector<ITextureSPtr>({ colorTarget }), format, level)
+{
+}
+
+RenderTarget::RenderTarget(ITextureSPtr colorTarget, IDepthAttachmentSPtr depthBuffer, int level)
+	: RenderTarget(std::vector<ITextureSPtr>({ colorTarget }), depthBuffer, level)
 {
 }
 
 RenderTarget::RenderTarget(IDepthAttachmentSPtr depthBuffer)
-	: m_colorTargets()
-	, m_depthBuffer(depthBuffer)
-	, m_level(0)
+	: RenderTarget(std::vector<ITextureSPtr>(), depthBuffer)
 {
 }
 

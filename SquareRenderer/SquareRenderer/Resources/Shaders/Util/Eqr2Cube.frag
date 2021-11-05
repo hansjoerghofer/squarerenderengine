@@ -4,7 +4,7 @@ layout (location = 0)  out vec4 Color;
 
 in vec4 FragPos;
 
-// inverse arcus tangens
+// ( 1/2PI, 1/PI )
 const vec2 IATAN = vec2(0.1591, 0.3183);
 
 uniform sampler2D equirectangularMap;

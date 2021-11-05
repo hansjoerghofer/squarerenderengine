@@ -201,6 +201,8 @@ void GLWindow::swapBuffers()
 {
     if (m_handle)
     {
+        // TODO add timer to check how long we wait (Present&Wait)
+
         glfwSwapBuffers(m_handle);
     }
 }

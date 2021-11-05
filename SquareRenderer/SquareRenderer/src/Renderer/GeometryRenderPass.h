@@ -2,20 +2,18 @@
 
 #include "Common/Timer.h"
 
-#include "Renderer/BaseRenderPass.h"
+#include "Renderer/BaseGeometryRenderPass.h"
 #include "Renderer/RendererState.h"
 
 DECLARE_PTRS(IDrawable);
 DECLARE_PTRS(GeometryRenderPass);
 
-class GeometryRenderPass : public BaseRenderPass
+class GeometryRenderPass : public BaseGeometryRenderPass
 {
 public:
 
     struct Data
     {
-        bool enabled = true;
-
         std::string name;
 
         RendererState state;
@@ -25,15 +23,13 @@ public:
         IRenderTargetSPtr target = nullptr;
 
         MaterialSPtr overrideMaterial = nullptr;
+
+        bool thinGlassMode = false;
     };
 
     GeometryRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib, const Data& command);
 
     virtual ~GeometryRenderPass();
-
-    virtual bool isEnabled() const override;
-
-    virtual void setEnabled(bool flag) override;
 
     void setWireframeMode(bool flag);
 

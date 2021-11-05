@@ -19,8 +19,6 @@ public:
 
 	virtual ~SSAORenderPass();
 
-	virtual void update(double deltaTime) override;
-
 	void setup(IRenderTargetSPtr target, Texture2DSPtr screenBuffer, Texture2DSPtr normalsBuffer);
 
 protected:

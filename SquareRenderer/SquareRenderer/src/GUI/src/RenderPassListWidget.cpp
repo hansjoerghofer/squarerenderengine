@@ -1,10 +1,12 @@
 #include "GUI/RenderPassListWidget.h"
+#include "Common/MathUtils.h"
 #include "GUI/imgui.h"
-
-#include "Renderer/RenderEngine.h"
 #include "Renderer/BloomRenderPass.h"
+#include "Renderer/DepthBuffer.h"
 #include "Renderer/GeometryRenderPass.h"
-
+#include "Renderer/RenderEngine.h"
+#include "Renderer/RenderTarget.h"
+#include "Renderer/ShadowMappingRenderPass.h"
 #include "Texture/Texture2D.h"
 
 class DefaultPassWidget : public IRenderPassWidget
@@ -65,11 +67,11 @@ public:
 		{
 			m_bloomPass->setIterations(m_iterations);
 		}
-		if (m_threshold != m_bloomPass->threshold())
+		if (MathUtils::numericClose(m_threshold, m_bloomPass->threshold()))
 		{
 			m_bloomPass->setThreshold(m_threshold);
 		}
-		if (m_intensity != m_bloomPass->intensity())
+		if (MathUtils::numericClose(m_intensity, m_bloomPass->intensity()))
 		{
 			m_bloomPass->setIntensity(m_intensity);
 		}
@@ -90,10 +92,15 @@ public:
 		ImGui::SliderScalar("Threshold", ImGuiDataType_Float, &m_threshold, &minThre, &maxThre, "%.2f");
 		ImGui::SliderScalar("Intensity", ImGuiDataType_Float, &m_intensity, &minInt, &maxInt, "%.2f");
 
-		constexpr float scale = 1.f;
-		ImGui::Image((void*)(intptr_t)m_bloomPass->blurBuffer()->handle(),
-			{ m_bloomPass->blurBuffer()->width() * scale, m_bloomPass->blurBuffer()->height() * scale },
-			{ 0,1 }, { 1,0 });
+		if (ImGui::TreeNode("Buffer"))
+		{
+			constexpr float scale = 1.f;
+			ImGui::Image((void*)(intptr_t)m_bloomPass->blurBuffer()->handle(),
+				{ m_bloomPass->blurBuffer()->width() * scale, m_bloomPass->blurBuffer()->height() * scale },
+				{ 0,1 }, { 1,0 });
+
+			ImGui::TreePop();
+		}
 	}
 
 private:
@@ -143,6 +150,66 @@ private:
 	GeometryRenderPassSPtr m_scenePass;
 };
 
+class ShadowPassWidget : public DefaultPassWidget
+{
+public:
+	ShadowPassWidget(ShadowMappingRenderPassSPtr pass)
+		: DefaultPassWidget(pass)
+		, m_shadowPass(pass)
+		, m_depthOffsetFactor(pass->depthOffsetFactor())
+		, m_depthOffsetUnit(pass->depthOffsetUnit())
+	{
+	}
+
+	virtual ~ShadowPassWidget() {};
+
+	virtual void update(double deltaTime) override
+	{
+		DefaultPassWidget::update(deltaTime);
+
+		if (MathUtils::numericClose(m_depthOffsetFactor, m_shadowPass->depthOffsetFactor()))
+		{
+			m_shadowPass->setDepthOffsetFactor(m_depthOffsetFactor);
+		}
+		if (MathUtils::numericClose(m_depthOffsetUnit, m_shadowPass->depthOffsetUnit()))
+		{
+			m_shadowPass->setDepthOffsetUnit(m_depthOffsetUnit);
+		}
+	}
+
+	virtual void draw() override
+	{
+		DefaultPassWidget::draw();
+
+		const float min = .0f;
+		const float max = 100.f;
+
+		ImGui::SliderScalar("Bias Factor", ImGuiDataType_Float, &m_depthOffsetFactor, &min, &max, "%.2f");
+		ImGui::SliderScalar("Bias Unit", ImGuiDataType_Float, &m_depthOffsetUnit, &min, &max, "%.2f");
+
+		if (ImGui::TreeNode("Shadow Maps"))
+		{
+			for (const auto& [light, data] : m_shadowPass->shadowData())
+			{
+				Texture2DSPtr depthMap = data.target->depthBufferAs<DepthTextureWrapper>()->texture();
+
+				constexpr float scale = 0.5f;
+				ImGui::Image((void*)(intptr_t)depthMap->handle(),
+					{ depthMap->width() * scale, depthMap->height() * scale },
+					{ 0,1 }, { 1,0 });
+			}
+			ImGui::TreePop();
+		}		
+	}
+
+private:
+
+	float m_depthOffsetFactor = 0.f;
+	float m_depthOffsetUnit = 0.f;
+
+	ShadowMappingRenderPassSPtr m_shadowPass;
+};
+
 RenderPassListWidget::RenderPassListWidget(const std::string& title, RenderEngineSPtr renderEngine)
 	: m_title(title)
 	, m_renderEngine(renderEngine)
@@ -155,6 +222,14 @@ RenderPassListWidget::RenderPassListWidget(const std::string& title, RenderEngin
 	m_widgetFactory["Opaque Scene"] = [](IRenderPassSPtr pass) -> IRenderPassWidgetUPtr
 	{
 		return std::make_unique<ScenePassWidget>(std::static_pointer_cast<GeometryRenderPass>(pass));
+	};
+	m_widgetFactory["Transparent Scene"] = [](IRenderPassSPtr pass) -> IRenderPassWidgetUPtr
+	{
+		return std::make_unique<ScenePassWidget>(std::static_pointer_cast<GeometryRenderPass>(pass));
+	};
+	m_widgetFactory["Shadow Mapping"] = [](IRenderPassSPtr pass) -> IRenderPassWidgetUPtr
+	{
+		return std::make_unique<ShadowPassWidget>(std::static_pointer_cast<ShadowMappingRenderPass>(pass));
 	};
 }
 
@@ -196,10 +271,11 @@ void RenderPassListWidget::draw()
 
 	for (IRenderPassWidgetSPtr widget : m_renderPassWidgets)
 	{
+		//if (ImGui::CollapsingHeader(widget->name().c_str()))
 		if (ImGui::TreeNode(widget->name().c_str()))
 		{
 			widget->draw();
-			
+
 			ImGui::TreePop();
 		}
 	}

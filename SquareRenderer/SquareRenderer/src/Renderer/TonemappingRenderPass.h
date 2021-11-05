@@ -20,7 +20,7 @@ public:
 
 	virtual void setup(IRenderTargetSPtr target, RenderTargetSPtr input);
 
-	virtual void update(double deltaTime) override;
+	virtual void setEnabled(bool flag) override;
 
 private:
 	virtual void renderInternal(Renderer& renderer) const override;
@@ -29,7 +29,5 @@ private:
 
 	MaterialSPtr m_tonemapping;
 	MaterialSPtr m_passthrough;
-
-	RendererState m_screenBlit;
 };
 

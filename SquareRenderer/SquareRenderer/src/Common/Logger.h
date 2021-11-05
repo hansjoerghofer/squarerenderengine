@@ -4,7 +4,7 @@
 
 #include <string>
 #include <sstream>
-#include <list>
+#include <vector>
 #include <functional>
 #include <memory>
 #include <string>
@@ -49,6 +49,7 @@ public:
 
 	void log(LogSeverity s, const std::string& message);
 
+	LogCallbackSPtr registerCallback(const LogCallback& func);
 	LogCallbackSPtr registerCallback(LogCallback&& func);
 
 	static Logger& getInstance();
@@ -95,5 +96,5 @@ private:
 	Logger(const Logger&) = delete;
 	Logger& operator=(const Logger&) = delete;
 
-	std::list<LogCallbackWPtr> m_callbacks;
+	std::vector<LogCallbackWPtr> m_callbacks;
 };

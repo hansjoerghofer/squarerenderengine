@@ -19,8 +19,6 @@ public:
 
 	void setup(IRenderTargetSPtr target, Texture2DSPtr screenBuffer);
 
-	virtual void update(double deltaTime) override;
-
 	Texture2DSPtr blurBuffer() const;
 
 	int iterations() const;
@@ -38,6 +36,8 @@ public:
 protected:
 
 	void renderInternal(Renderer& renderer) const override;
+
+	void updateInternal(double deltaTime) override;
 
 	int m_numBlurIterations = 1;
 

@@ -28,8 +28,12 @@ const std::string& BaseRenderPass::name() const
 
 void BaseRenderPass::render(Renderer& renderer) const
 {
+	if (!m_enableRendering) return;
+
 	Logger::Debug("-- Start renderpass %s", m_name.c_str());
 	GraphicsAPIBeginScopedDebugGroup("PASS: " + name());
+
+	renderer.resetPrimitiveCounter();
 
 	m_timer.reset();
 	m_gpuTimer->begin();
@@ -37,11 +41,19 @@ void BaseRenderPass::render(Renderer& renderer) const
 	renderInternal(renderer);
 
 	m_gpuTimer->end();
-	m_renderStatistics.cpuTimeMs = m_timer.elapsedMs();
+	m_renderStatistics.cpuTimeMs += m_timer.elapsedMs();
+	m_renderStatistics.rendererdPrimitives = renderer.primitiveCounter();
 }
 
-void BaseRenderPass::update(double /*deltaTime*/)
+void BaseRenderPass::update(double deltaTime)
 {
+	if (!m_enableUpdate) return;
+
+	m_timer.reset();
+
+	updateInternal(deltaTime);
+
+	m_renderStatistics.cpuTimeMs = m_timer.elapsedMs();
 }
 
 void BaseRenderPass::setup(IRenderTargetSPtr target)
@@ -57,6 +69,8 @@ bool BaseRenderPass::isEnabled() const
 void BaseRenderPass::setEnabled(bool flag)
 {
 	m_enabled = flag;
+	m_enableRendering = m_enabled;
+	m_enableUpdate = m_enabled;
 }
 
 IRenderTargetSPtr BaseRenderPass::target() const
@@ -72,7 +86,11 @@ RenderStatisticsData BaseRenderPass::renderStatistics() const
 	return m_renderStatistics;
 }
 
-void BaseRenderPass::blit(Renderer& renderer, 
+void BaseRenderPass::updateInternal(double /*deltaTime*/)
+{
+}
+
+void BaseRenderPass::blit(Renderer& renderer,
 	IRenderTargetSPtr target, 
 	MaterialSPtr material, 
 	const RendererState& state /*= RendererState::Blit()*/) const

@@ -1,7 +1,6 @@
 //? #version 450 core
-
-#pragma include Globals.glsl //! #include "Globals.glsl"
-#pragma include Sampling.glsl //! #include "Sampling.glsl"
+//? #include "Globals.glsl"
+//? #include "Sampling.glsl"
 
 //-----------------------------------------------
 //            PBR FUNCTIONS

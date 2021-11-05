@@ -1,10 +1,12 @@
 #version 450 core
 
+#pragma include ../Includes/Globals.glsl //! #include "../Includes/Globals.glsl"
 #pragma include ../Includes/Common.glsl //! #include "../Includes/Common.glsl"
-#pragma include ../Includes/PBR.glsl //! #include "../Includes/PBR.glsl"
 #pragma include ../Includes/Lights.glsl //! #include "../Includes/Lights.glsl"
 #pragma include ../Includes/Camera.glsl //! #include "../Includes/Camera.glsl"
+#pragma include ../Includes/Sampling.glsl //! #include "../Includes/Sampling.glsl"
 #pragma include ../Includes/Shadow.glsl //! #include "../Includes/Shadow.glsl"
+#pragma include ../Includes/PBR.glsl //! #include "../Includes/PBR.glsl"
 
 in VertexShaderData
 {
@@ -17,8 +19,9 @@ in VertexShaderData
     vec4[_MAX_SIZE_LIGHT] pFragmentLS;
 } IN;
 
-layout (location = 0) out vec4 OutputShadedRoughness;
-layout (location = 1) out vec4 OutputNormalDepth;
+layout (location = 0) out vec4 OutputShaded;
+//layout (location = 0) out vec4 OutputShadedRoughness;
+//layout (location = 1) out vec4 OutputNormalDepth;
 
 // uniforms
 uniform sampler2D albedoTexture; // [white]
@@ -152,7 +155,8 @@ void main()
 
     vec3 cShaded = cLight + cAmbient;
 
-    OutputShadedRoughness = vec4(cShaded, mat.roughness);
+    //OutputShadedRoughness = vec4(cShaded, mat.roughness);
+    OutputShaded = vec4(cShaded, cAlbedo.a);
     //OutputNormalDepth = vec4(N.xyz, gl_FragCoord.z);
-    OutputNormalDepth = vec4(P.xyz, gl_FragCoord.z);
+    //OutputNormalDepth = vec4(P.xyz, gl_FragCoord.z);
 }

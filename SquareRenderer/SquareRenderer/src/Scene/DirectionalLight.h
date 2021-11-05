@@ -24,6 +24,8 @@ public:
 
 	virtual bool isShadowCaster() const override;
 
+	virtual void setDirection(const glm::vec3& direction);
+
 private:
 
 	glm::vec3 m_direction;

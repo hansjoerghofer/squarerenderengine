@@ -257,10 +257,10 @@ public:
 class GLShader : public IShaderResource
 {
 public:
-    GLShader(ShaderSourceSPtr shader)
+    GLShader(const ShaderSource& shader)
     {
         GLenum shaderType = 0;
-        switch (shader->type())
+        switch (shader.type())
         {
         case ShaderType::Vertex:
             shaderType = GL_VERTEX_SHADER;
@@ -284,7 +284,7 @@ public:
 
         if (shaderType != 0)
         {
-            const char* src = shader->source().c_str();
+            const char* src = shader.source().c_str();
             const unsigned int handle = glCreateShader(shaderType);
             glShaderSource(handle, 1, &src, NULL);
             glCompileShader(handle);
@@ -329,12 +329,12 @@ private:
 class GLShaderProgram : public IShaderProgramResource
 {
 public:
-    GLShaderProgram(ShaderProgramSPtr program)
+    GLShaderProgram(const ShaderProgram& program)
         : m_isBound(false)
     {
         unsigned int id = glCreateProgram();
 
-        for (ShaderSourceSPtr shader : program->sources())
+        for (ShaderSourceSPtr shader : program.sources())
         {
             if (shader->id() >= 0)
             {
@@ -503,9 +503,9 @@ class GLTexture2DResource : public ITextureResource
 {
 public:
 
-    GLTexture2DResource(Texture2DSPtr texture, const void* data = nullptr)
+    GLTexture2DResource(const Texture2D& texture, const void* data = nullptr)
     {
-        const auto& found = s_texFormatToGL.find(texture->format());
+        const auto& found = s_texFormatToGL.find(texture.format());
         if (found == s_texFormatToGL.end())
         {
             return;
@@ -513,7 +513,7 @@ public:
         m_format = found->second;
 
         GLuint textureWrap;
-        switch (texture->sampler().wrap)
+        switch (texture.sampler().wrap)
         {
         case TextureWrap::Mirror:
             textureWrap = GL_MIRRORED_REPEAT;
@@ -532,7 +532,7 @@ public:
 
         GLuint textureMinFilter;
         GLuint textureMaxFilter;
-        switch (texture->sampler().filter)
+        switch (texture.sampler().filter)
         {
         case TextureFilter::Nearest:
             textureMinFilter = GL_NEAREST_MIPMAP_NEAREST;
@@ -545,7 +545,7 @@ public:
             break;
         }
 
-        if (!texture->sampler().mipmapping)
+        if (!texture.sampler().mipmapping)
         {
             textureMinFilter = textureMaxFilter;
         }
@@ -560,29 +560,29 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, textureMaxFilter);
 
         // Enable hardware shadow anti aliasing
-        if (texture->format() == TextureFormat::ShadowMapHalf || 
-            texture->format() == TextureFormat::ShadowMapFloat)
+        if (texture.format() == TextureFormat::ShadowMapHalf || 
+            texture.format() == TextureFormat::ShadowMapFloat)
         {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
         }
 
-        if (texture->sampler().wrap == TextureWrap::ClampToBorder)
+        if (texture.sampler().wrap == TextureWrap::ClampToBorder)
         {
             glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, 
-                glm::value_ptr(texture->sampler().borderColor));
+                glm::value_ptr(texture.sampler().borderColor));
         }
 
         glTexImage2D(GL_TEXTURE_2D, 
             0, 
             m_format.internalFormat,
-            texture->width(), 
-            texture->height(), 
+            texture.width(), 
+            texture.height(), 
             0, 
             m_format.dataFormat, 
             m_format.dataType,
             data);
 
-        if (texture->sampler().mipmapping)
+        if (texture.sampler().mipmapping)
         {
             glGenerateMipmap(GL_TEXTURE_2D);
         }
@@ -628,9 +628,9 @@ private:
 class GLCubemapResource : public ITextureResource
 {
 public:
-    GLCubemapResource(CubemapSPtr texture, const void* data = nullptr)
+    GLCubemapResource(const Cubemap& texture, const void* data = nullptr)
     {
-        const auto& found = s_texFormatToGL.find(texture->format());
+        const auto& found = s_texFormatToGL.find(texture.format());
         if (found == s_texFormatToGL.end())
         {
             return;
@@ -638,7 +638,7 @@ public:
         m_format = found->second;
 
         GLuint textureWrap;
-        switch (texture->sampler().wrap)
+        switch (texture.sampler().wrap)
         {
         case TextureWrap::Mirror:
             textureWrap = GL_MIRRORED_REPEAT;
@@ -657,7 +657,7 @@ public:
 
         GLuint textureMinFilter;
         GLuint textureMaxFilter;
-        switch (texture->sampler().filter)
+        switch (texture.sampler().filter)
         {
         case TextureFilter::Nearest:
             textureMinFilter = GL_NEAREST_MIPMAP_NEAREST;
@@ -670,7 +670,7 @@ public:
             break;
         }
 
-        if (!texture->sampler().mipmapping)
+        if (!texture.sampler().mipmapping)
         {
             textureMinFilter = textureMaxFilter;
         }
@@ -689,16 +689,16 @@ public:
         glTexParameteri(TARGET_TYPE, GL_TEXTURE_MAG_FILTER, textureMaxFilter);
 
         // Enable hardware shadow anti aliasing
-        if (texture->format() == TextureFormat::ShadowMapHalf ||
-            texture->format() == TextureFormat::ShadowMapFloat)
+        if (texture.format() == TextureFormat::ShadowMapHalf ||
+            texture.format() == TextureFormat::ShadowMapFloat)
         {
             glTexParameteri(TARGET_TYPE, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
         }
 
-        if (texture->sampler().wrap == TextureWrap::ClampToBorder)
+        if (texture.sampler().wrap == TextureWrap::ClampToBorder)
         {
             glTexParameterfv(TARGET_TYPE, GL_TEXTURE_BORDER_COLOR,
-                glm::value_ptr(texture->sampler().borderColor));
+                glm::value_ptr(texture.sampler().borderColor));
         }
 
         // upload cubemap texture data
@@ -707,15 +707,15 @@ public:
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + side,
                 0, 
                 m_format.internalFormat, 
-                texture->width(),
-                texture->height(),
+                texture.width(),
+                texture.height(),
                 0,
                 m_format.dataFormat, 
                 m_format.dataType, 
                 data);
         }
 
-        if (texture->sampler().mipmapping)
+        if (texture.sampler().mipmapping)
         {
             glGenerateMipmap(TARGET_TYPE);
         }
@@ -770,55 +770,55 @@ private:
 class GLFramebuffer : public IRenderTargetResource
 {
 public:
-    GLFramebuffer(RenderTargetSPtr rendertarget)
+    GLFramebuffer(const RenderTarget& rendertarget)
     {
         unsigned int handle;
         glGenFramebuffers(1, &handle);
         glBindFramebuffer(GL_FRAMEBUFFER, handle);
         
         GLenum attachement = GL_COLOR_ATTACHMENT0;
-        for (ITextureSPtr att : rendertarget->colorTargets())
+        for (ITextureSPtr att : rendertarget.colorTargets())
         {
             switch (att->layout())
             {
             case TextureLayout::Texture2D:
                 glFramebufferTexture2D(GL_FRAMEBUFFER,
                     attachement, GL_TEXTURE_2D,
-                    att->handle(), rendertarget->level());
+                    att->handle(), rendertarget.level());
                 break;
             case TextureLayout::Cubemap:
                 glFramebufferTexture(GL_FRAMEBUFFER,
                     attachement, att->handle(),
-                    rendertarget->level());
+                    rendertarget.level());
                 break;
             }
 
             ++attachement;
         }
 
-        if (rendertarget->depthBuffer())
+        if (rendertarget.depthBuffer())
         {
             GLenum depthFormat = GL_DEPTH_ATTACHMENT;
-            if (rendertarget->depthBuffer()->hasStencilBuffer())
+            if (rendertarget.depthBuffer()->hasStencilBuffer())
             {
                 depthFormat = GL_DEPTH_STENCIL_ATTACHMENT;
             }
 
-            if (rendertarget->depthBuffer()->attachmentType() == DepthAttachmentType::Texture2D)
+            if (rendertarget.depthBuffer()->attachmentType() == DepthAttachmentType::Texture2D)
             {
                 glFramebufferTexture2D(GL_FRAMEBUFFER,
                     depthFormat, GL_TEXTURE_2D,
-                    rendertarget->depthBuffer()->handle(), rendertarget->level());
+                    rendertarget.depthBuffer()->handle(), rendertarget.level());
             }
             else
             {
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER,
                     depthFormat, GL_RENDERBUFFER,
-                    rendertarget->depthBuffer()->handle());
+                    rendertarget.depthBuffer()->handle());
             }
         }
 
-        if (rendertarget->colorTargets().empty())
+        if (rendertarget.colorTargets().empty())
         {
             glDrawBuffer(GL_NONE);
             glReadBuffer(GL_NONE);
@@ -851,9 +851,9 @@ class GLRenderbuffer : public IDepthBufferResource
 {
 public:
 
-    GLRenderbuffer(DepthBufferSPtr depthBuffer)
+    GLRenderbuffer(const DepthBuffer& depthBuffer)
     {
-        switch (depthBuffer->format())
+        switch (depthBuffer.format())
         {
         case DepthBufferFormat::Depth16:
             m_format = GL_DEPTH_COMPONENT16;
@@ -872,15 +872,15 @@ public:
             break;
         }
 
-        m_width = depthBuffer->width();
-        m_height = depthBuffer->height();
+        m_width = depthBuffer.width();
+        m_height = depthBuffer.height();
 
         unsigned int handle;
         glGenRenderbuffers(1, &handle);
         glBindRenderbuffer(GL_RENDERBUFFER, handle);
 
         glRenderbufferStorage(GL_RENDERBUFFER, m_format,
-            depthBuffer->width(), depthBuffer->height());
+            depthBuffer.width(), depthBuffer.height());
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
         m_handle = static_cast<SharedResource::Handle>(handle);
@@ -1001,7 +1001,7 @@ bool GraphicsAPI::allocate(ITextureSPtr texture, const void* data)
             texture2D->width(), texture2D->height(),
             (static_cast<size_t>(texture2D->width() * texture2D->height()) * found->second.internalBPC) / 1024.f);
 
-        ITextureResourceUPtr resource(new GLTexture2DResource(texture2D, data));
+        ITextureResourceUPtr resource = std::make_unique<GLTexture2DResource>(*texture2D, data);
 
         if (resource && resource->isValid())
         {
@@ -1023,8 +1023,7 @@ bool GraphicsAPI::allocate(ITextureSPtr texture, const void* data)
             cubemap->width(),
             (static_cast<size_t>(cubemap->width() * cubemap->width()) * found->second.internalBPC) / 1024.f);
 
-        ITextureResourceUPtr resource(new GLCubemapResource(cubemap, data));
-
+        ITextureResourceUPtr resource = std::make_unique<GLCubemapResource>(*cubemap, data);
         if (resource && resource->isValid())
         {
             cubemap->link(std::move(resource));
@@ -1064,8 +1063,8 @@ bool GraphicsAPI::allocate(RenderTargetSPtr rendertarget)
         {
             DepthBufferSPtr depthBuffer = std::static_pointer_cast<DepthBuffer>(
                 rendertarget->depthBuffer());
-            IDepthBufferResourceUPtr depthResource(new GLRenderbuffer(depthBuffer));
 
+            IDepthBufferResourceUPtr depthResource = std::make_unique<GLRenderbuffer>(*depthBuffer);
             if (depthResource && depthResource->isValid())
             {
                 depthBuffer->link(std::move(depthResource));
@@ -1091,8 +1090,7 @@ bool GraphicsAPI::allocate(RenderTargetSPtr rendertarget)
         
     }
 
-    IRenderTargetResourceUPtr resource(new GLFramebuffer(rendertarget));
-
+    IRenderTargetResourceUPtr resource = std::make_unique<GLFramebuffer>(*rendertarget);
     if (resource && resource->isValid())
     {
         rendertarget->link(std::move(resource));
@@ -1133,8 +1131,7 @@ GraphicsAPI::Result GraphicsAPI::compile(ShaderSourceSPtr shader)
         return result;
     }
 
-    std::unique_ptr<GLShader> resource(new GLShader(shader));
-
+    std::unique_ptr<GLShader> resource = std::make_unique<GLShader>(*shader);
     result.success = resource->isValid();
     result.message = resource->compilerLog();
 
@@ -1201,8 +1198,7 @@ GraphicsAPI::Result GraphicsAPI::compile(ShaderProgramSPtr program)
     }
 
     // link the shader program
-    std::unique_ptr<GLShaderProgram> resource(new GLShaderProgram(program));
-
+    std::unique_ptr<GLShaderProgram> resource = std::make_unique<GLShaderProgram>(*program);
     result.success = resource->isValid();
     result.message = resource->linkerLog();
 

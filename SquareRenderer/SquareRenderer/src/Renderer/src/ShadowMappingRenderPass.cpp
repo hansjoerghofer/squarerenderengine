@@ -13,8 +13,16 @@
 #include "Scene/SceneNode.h"
 #include "Texture/Texture2D.h"
 
+#include <set>
+
+constexpr glm::mat4 BIAS_MATRIX(
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 0.5, 0.0,
+	0.5, 0.5, 0.5, 1.0);
+
 ShadowMappingRenderPass::ShadowMappingRenderPass(ResourceManagerSPtr resources, MaterialLibrarySPtr matlib)
-	: BaseRenderPass("ShadowMapping", resources, matlib)
+	: BaseGeometryRenderPass("Shadow Mapping", resources, matlib)
 {
 }
 
@@ -27,7 +35,7 @@ glm::mat4 calculateLightSpaceMatrix(DirectionalLightSPtr light, const BoundingBo
 	const glm::mat4 lightView = glm::lookAt(
 		bounds.center(),
 		bounds.center() + light->direction(),
-		glm::UP);
+		glm::vec3_up);
 
 	const BoundingBox cameraVolume = lightView * bounds;
 
@@ -49,7 +57,7 @@ void ShadowMappingRenderPass::setup(SceneSPtr scene)
 	m_state = RendererState();
 	m_state.clearColor = false;
 	m_state.writeColor = false;
-	m_state.depthOffset = glm::vec2(4., 1.);
+	m_state.depthOffset = glm::vec2(9., 1.);
 
 	const int shadowMapWidth = 1024;
 	const int shadowMapHeight = 1024;
@@ -59,12 +67,6 @@ void ShadowMappingRenderPass::setup(SceneSPtr scene)
 		TextureWrap::ClampToBorder,
 		false, glm::vec4(1,1,1,1)
 	};
-
-	constexpr glm::mat4 biasMatrix(
-		0.5, 0.0, 0.0, 0.0,
-		0.0, 0.5, 0.0, 0.0,
-		0.0, 0.0, 0.5, 0.0,
-		0.5, 0.5, 0.5, 1.0);
 
 	int index = 0;
 	for (ILightsourceSPtr light : m_scene->lights())
@@ -92,17 +94,35 @@ void ShadowMappingRenderPass::setup(SceneSPtr scene)
 		MaterialSPtr shadowMat = m_matlib->instanciate("Util.ShadowMapping");
 		shadowMat->setUniform("worldToLight", worldToLight);
 
-		ShadowData sData;
+		ShadowData& sData = m_shadowData[dirLight];
 		sData.index = index;
-		sData.lightMatrice = biasMatrix * worldToLight;
+		sData.lightMatrice = BIAS_MATRIX * worldToLight;
 		sData.target = shadowMapTarget;
 		sData.material = shadowMat;
-		m_shadowData[dirLight] = std::move(sData);
 
 		++index;
 	}
 
-	for (const auto& [name, program] : m_matlib->programs())
+	m_geometry.clear();
+	m_geometry.reserve(m_scene->nodeNum());
+
+	std::set<ShaderProgramSPtr> usedPrograms;
+
+	auto t = m_scene->traverser();
+	while (t.hasNext())
+	{
+		IDrawableSPtr drawable = t.next();
+		if (drawable->geometry() && drawable->material())
+		{
+			if (drawable->material()->layer() == Material::Layer::Opaque)
+			{
+				m_geometry.push_back(drawable);
+				usedPrograms.insert(drawable->material()->program());
+			}
+		}
+	}
+
+	for (ShaderProgramSPtr program : usedPrograms)
 	{
 		//TODO check if shadows are supported?
 		// set shadow maps
@@ -114,37 +134,31 @@ void ShadowMappingRenderPass::setup(SceneSPtr scene)
 				shadowData.index);
 		}
 	}
-
-	m_geometry.clear();
-	m_geometry.reserve(m_scene->nodeNum());
-
-	auto t = m_scene->traverser();
-	while (t.hasNext())
-	{
-		IDrawableSPtr drawable = t.next();
-		if (drawable->geometry())
-		{
-			m_geometry.push_back(drawable);
-		}
-	}
-}
-
-void ShadowMappingRenderPass::update(double /*deltaTime*/)
-{
-	/*for (auto& [light, shadowData] : m_shadowData)
-	{
-		if (light->type() == LightsourceType::Directional)
-		{
-			shadowData.lightMatrice = calculateLightSpaceMatrix(
-				std::static_pointer_cast<DirectionalLight>(light),
-				m_scene->sceneBounds());
-		}
-	}*/
 }
 
 const std::unordered_map<ILightsourceSPtr, ShadowData>& ShadowMappingRenderPass::shadowData() const
 {
 	return m_shadowData;
+}
+
+void ShadowMappingRenderPass::setDepthOffsetFactor(float factor)
+{
+	m_state.depthOffset.x = factor;
+}
+
+void ShadowMappingRenderPass::setDepthOffsetUnit(float unit)
+{
+	m_state.depthOffset.y = unit;
+}
+
+float ShadowMappingRenderPass::depthOffsetFactor() const
+{
+	return m_state.depthOffset.x;
+}
+
+float ShadowMappingRenderPass::depthOffsetUnit() const
+{
+	return m_state.depthOffset.y;
 }
 
 void ShadowMappingRenderPass::renderInternal(Renderer& renderer) const
@@ -157,11 +171,22 @@ void ShadowMappingRenderPass::renderInternal(Renderer& renderer) const
 
 		renderer.applyState(m_state);
 
-		for (IDrawableSPtr drawable : m_geometry)
+		renderGeometry(renderer, m_geometry, shadowData.material);
+	}
+}
+
+void ShadowMappingRenderPass::updateInternal(double /*deltaTime*/)
+{
+	for (auto& [light, shadowData] : m_shadowData)
+	{
+		if (light->type() == LightsourceType::Directional)
 		{
-			drawable->preRender(shadowData.material);
-			renderer.render(drawable->geometry(), shadowData.material);
-			drawable->postRender();
+			const glm::mat4 worldToLight = calculateLightSpaceMatrix(
+				std::static_pointer_cast<DirectionalLight>(light),
+				m_scene->sceneBounds());
+
+			shadowData.lightMatrice = BIAS_MATRIX * worldToLight;
+			shadowData.material->setUniform("worldToLight", worldToLight);
 		}
 	}
 }

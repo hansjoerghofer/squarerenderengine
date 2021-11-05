@@ -7,7 +7,7 @@
 #include "Scene/BoundingBox.h"
 
 #include <string>
-#include <list>
+#include <vector>
 
 DECLARE_PTRS(SceneNode);
 DECLARE_PTRS(IGeometry);
@@ -26,7 +26,7 @@ public:
 
 	void addChild(SceneNodeSPtr node);
 
-	const std::list<SceneNodeSPtr>& children() const;
+	const std::vector<SceneNodeSPtr>& children() const;
 
 	unsigned int count() const;
 
@@ -67,5 +67,5 @@ private:
 
 	BoundingBox m_bounds;
 
-	std::list<SceneNodeSPtr> m_children;
+	std::vector<SceneNodeSPtr> m_children;
 };

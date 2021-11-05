@@ -28,7 +28,7 @@ void SceneNode::addChild(SceneNodeSPtr node)
     m_children.push_back(node);
 }
 
-const std::list<SceneNodeSPtr>& SceneNode::children() const
+const std::vector<SceneNodeSPtr>& SceneNode::children() const
 {
     return m_children;
 }

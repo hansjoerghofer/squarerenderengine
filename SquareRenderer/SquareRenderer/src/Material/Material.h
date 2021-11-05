@@ -14,12 +14,17 @@ class Material
 {
 public:
 
+	enum class Layer { Opaque, Transparent };
+
 	Material(const std::string& name, ShaderProgramSPtr program);
-	Material(std::string&& name, ShaderProgramSPtr program);
 
 	ShaderProgramSPtr program() const;
 
 	void setProgram(ShaderProgramSPtr program);
+
+	void setLayer(Layer layer);
+
+	Layer layer() const;
 
 	const std::string& name() const;
 
@@ -48,9 +53,11 @@ private:
 
 	std::string m_name;
 
-	mutable bool m_isBound;
+	mutable bool m_isBound = false;
 
 	ShaderProgramSPtr m_program;
+
+	Layer m_layer = Layer::Opaque;
 
 	std::unordered_map<std::string, UniformValue> m_uniformStorage;
 

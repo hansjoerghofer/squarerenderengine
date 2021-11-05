@@ -30,7 +30,7 @@ sky:
 overrides:
   material:
     - name: Ground
-      #program: Lit.PBRTess
+      #program: ForwardLit.PBRTess
       parameters:
         - uniform: albedoTexture
           type: Texture2D

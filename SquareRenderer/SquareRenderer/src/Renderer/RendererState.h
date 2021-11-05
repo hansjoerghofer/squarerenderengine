@@ -106,4 +106,14 @@ struct RendererState
         state.blendDst = BlendFactor::One;
         return state;
     }
+
+    static RendererState AlphaBlend()
+    {
+        RendererState state;
+        state.clearColor = false;
+        state.clearDepth = false;
+        state.blendSrc = BlendFactor::SrcAlpha;
+        state.blendDst = BlendFactor::InvSrcAlpha;
+        return state;
+    }
 };

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <filesystem>
 #include <stack>
+#include <unordered_set>
 
 DECLARE_PTRS(ShaderSource);
 struct UniformMetaInfo;
@@ -38,6 +39,8 @@ protected:
 	std::unordered_map<std::string, ShaderSourceSPtr> m_shaderCache;
 
 	std::vector<UniformMetaInfo> m_tempUniformCache;
+
+	std::unordered_set<std::string> m_tempProcessedIncludes;
 
 	std::vector<std::string> m_shaderDefines;
 };

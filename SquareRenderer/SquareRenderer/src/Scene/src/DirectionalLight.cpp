@@ -35,3 +35,8 @@ bool DirectionalLight::isShadowCaster() const
 {
 	return m_isShadowCaster;
 }
+
+void DirectionalLight::setDirection(const glm::vec3& direction)
+{
+	m_direction = glm::normalize(direction);
+}

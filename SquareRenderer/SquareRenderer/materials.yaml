@@ -1,24 +1,28 @@
 shaderRoot: Resources/Shaders/
 
 programs:
- - name: Lit.PBRTess
+ - name: ForwardLit.PBRTess
    defines: [ SHADOW_PCF , TESSELATION ]
    files:
-     - Lit/PBR.vert
-     - Lit/Tesselate.tesc
-     - Lit/Tesselate.tese
+     - ForwardLit/PBR.vert
+     - ForwardLit/Tesselate.tesc
+     - ForwardLit/Tesselate.tese
      #- Test.frag
-     - Lit/PBR.frag
- - name: Lit.BlinnPhong
+     - ForwardLit/PBR.frag
+ - name: ForwardLit.BlinnPhong
    defines: [ SHADOW_HARD ]
    files:
-     - Lit/BlinnPhong.vert
-     - Lit/BlinnPhong.frag
- - name: Lit.PBR
-   defines: [ SHADOW_PCSS ]
+     - ForwardLit/BlinnPhong.vert
+     - ForwardLit/BlinnPhong.frag
+ - name: ForwardLit.PBR
+   defines: [ SHADOW_PCF ]
    files:
-     - Lit/PBR.vert
-     - Lit/PBR.frag
+     - ForwardLit/PBR.vert
+     - ForwardLit/PBR.frag
+ - name: ForwardLit.Data
+   files:
+     - ForwardLit/Data.vert
+     - ForwardLit/Data.frag
  - name: Debug.Line
    files:
      - Line.vert

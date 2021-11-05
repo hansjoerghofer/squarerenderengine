@@ -24,9 +24,18 @@ void Logger::log(LogSeverity s, const std::string& message)
 	}
 }
 
+LogCallbackSPtr Logger::registerCallback(const LogCallback& func)
+{
+	LogCallbackSPtr ptr = std::make_shared<LogCallback>(func);
+
+	m_callbacks.push_back(ptr);
+
+	return ptr;
+}
+
 LogCallbackSPtr Logger::registerCallback(LogCallback&& func)
 {
-	LogCallbackSPtr ptr(new LogCallback(std::move(func)));
+	LogCallbackSPtr ptr = std::make_shared<LogCallback>(std::move(func));
 
 	m_callbacks.push_back(ptr);
 

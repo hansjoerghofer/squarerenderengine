@@ -27,9 +27,15 @@ public:
 
 	virtual void visit(PrimitiveSet& primitiveSet) override;
 
+	void resetPrimitiveCount();
+
+	size_t primitiveCount() const;
+
 private:
 
     bool m_tesselate = false;
+
+	size_t m_primitiveCount = 0;
 };
 
 class Renderer
@@ -39,6 +45,10 @@ public:
 	Renderer();
 
 	void render(IGeometrySPtr geo, MaterialSPtr mat);
+
+	size_t primitiveCounter() const;
+
+	void resetPrimitiveCounter();
 
 	void blit(IRenderTargetSPtr source, IRenderTargetSPtr target, 
 		TextureFilter filter = TextureFilter::Linear,

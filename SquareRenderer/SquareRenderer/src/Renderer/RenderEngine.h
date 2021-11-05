@@ -4,7 +4,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/UniformBlockData.h"
 
-#include <list>
+#include <vector>
 #include <unordered_map>
 
 DECLARE_PTRS(Scene);
@@ -28,15 +28,6 @@ class UniformBlockData;
 struct CameraUniformBlock;
 struct LightsUniformBlock;
 struct RenderCommand;
-
-//struct ShadowData
-//{
-//	int index = -1;
-//	glm::mat4 lightMatrice = glm::mat4(1);
-//
-//	ITextureSPtr data = nullptr;
-//	MaterialSPtr material = nullptr;
-//};
 
 struct IBLData
 {
@@ -65,7 +56,7 @@ public:
 
 	void setupGizmos(const std::string& programName);
 
-	const std::list<IRenderPassSPtr>& renderPasses() const;
+	const std::vector<IRenderPassSPtr>& renderPasses() const;
 
 	void update(double deltaTime);
 
@@ -94,10 +85,6 @@ protected:
 
 	void setupPostProcessing();
 
-	RenderTargetSPtr screenSpaceTarget(float scale);
-
-	ITextureSPtr getLastColorTarget(int slotIndex = 0) const;
-
 	GraphicsAPISPtr m_api;
 
 	MaterialLibrarySPtr m_matlib;
@@ -110,7 +97,9 @@ protected:
 
 	IRenderTargetSPtr m_outputTarget;
 
-	RenderTargetSPtr m_gBuffer;
+	RenderTargetSPtr m_thinGBuffer;
+
+	RenderTargetSPtr m_colorBuffer;
 
 	IDrawableSPtr m_gizmos;
 
@@ -123,9 +112,9 @@ protected:
 
 	double m_scale = 1.0;
 
-	std::list<IRenderPassSPtr> m_renderPassList;
+	std::vector<IRenderPassSPtr> m_renderPassList;
 
-	ShadowMappingRenderPassSPtr m_shadowMappingPass;
+	ShadowMappingRenderPassSPtr m_shadowMapping;
 
 	IBLData m_ibl;
 

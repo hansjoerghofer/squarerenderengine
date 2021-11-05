@@ -1,4 +1,4 @@
-#include "Common/Math3D.h"
+#include "Common/MathUtils.h"
 #include "GUI/MaterialLibraryWidget.h"
 #include "GUI/imgui.h"
 #include "Material/MaterialLibrary.h"
@@ -6,18 +6,6 @@
 #include "Material/ShaderProgram.h"
 
 #include <functional>
-
-inline bool numericClose(float a, float b)
-{
-	return fabs(a - b) < 1e-6;
-}
-
-inline bool numericClose(const glm::vec4& a, const glm::vec4& b)
-{
-	return numericClose(a.x, b.x)
-		&& numericClose(a.y, b.y)
-		&& numericClose(a.z, b.z);
-}
 
 template<typename T>
 UniformValueCache<T> createFromUniform(const UniformValue& value, const UniformMetaInfo& uniform)
@@ -76,7 +64,7 @@ void updatUniformValue(UniformGroupCache<T>& uniformCache, std::function<bool(co
 {
 	for (auto& uniform : uniformCache.floatUniforms)
 	{
-		if (!numericClose(uniform.newValue, uniform.oldValue) &&
+		if (!MathUtils::numericClose(uniform.newValue, uniform.oldValue) &&
 			updateFunc(uniform.name, uniform.newValue))
 		{
 			uniform.oldValue = uniform.newValue;
@@ -92,7 +80,7 @@ void updatUniformValue(UniformGroupCache<T>& uniformCache, std::function<bool(co
 	}
 	for (auto& uniform : uniformCache.vec4Uniforms)
 	{
-		if (!numericClose(uniform.newValue, uniform.oldValue) &&
+		if (!MathUtils::numericClose(uniform.newValue, uniform.oldValue) &&
 			updateFunc(uniform.name, uniform.newValue))
 		{
 			uniform.oldValue = uniform.newValue;
@@ -173,7 +161,7 @@ void MaterialLibraryWidget::update(double /*deltaTime*/)
 
 				insertUniformValue(progCache, uniformValue, metaInfo);
 			}
-			m_programCache.emplace_back(std::move(progCache));
+			m_programCache.emplace_back(progCache);
 		}
 	}
 	else
@@ -203,7 +191,7 @@ void MaterialLibraryWidget::update(double /*deltaTime*/)
 
 				insertUniformValue(matCache, uniformValue, metaInfo);
 			}
-			m_materialCache.emplace_back(std::move(matCache));
+			m_materialCache.emplace_back(matCache);
 		}
 	}
 	else

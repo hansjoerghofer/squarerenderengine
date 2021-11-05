@@ -19,13 +19,13 @@ public:
 	RenderTarget(ITextureSPtr colorTarget,
 		DepthBufferFormat format, int level = 0);
 
-	RenderTarget(std::vector<ITextureSPtr>&& colorTargets,
+	RenderTarget(const std::vector<ITextureSPtr>& colorTargets,
 		DepthBufferFormat format, int level = 0);
 
 	explicit RenderTarget(ITextureSPtr colorTarget,
 		IDepthAttachmentSPtr depthBuffer = nullptr, int level = 0);
 
-	explicit RenderTarget(std::vector<ITextureSPtr>&& colorTargets,
+	explicit RenderTarget(const std::vector<ITextureSPtr>& colorTargets,
 		IDepthAttachmentSPtr depthBuffer = nullptr, int level = 0);
 
 	explicit RenderTarget(IDepthAttachmentSPtr depthBuffer);

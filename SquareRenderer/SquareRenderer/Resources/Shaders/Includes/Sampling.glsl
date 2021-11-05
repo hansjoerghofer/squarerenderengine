@@ -23,3 +23,19 @@ vec2 _hammersleyOpt(uint i, float invN)
 {
     return vec2(float(i) * invN, _radicalInverse_VdC(i));
 }
+
+// vec3 _hemisphereSample_uniform(float u, float v) 
+// {
+//     float phi = v * 2.0 * PI;
+//     float cosTheta = 1.0 - u;
+//     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+//     return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+// }
+//    
+// vec3 _hemisphereSample_cos(float u, float v) 
+// {
+//     float phi = v * 2.0 * PI;
+//     float cosTheta = sqrt(1.0 - u);
+//     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+//     return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+// }

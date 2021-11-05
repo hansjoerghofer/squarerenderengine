@@ -10,6 +10,7 @@
 #include "GUI/MaterialLibraryWidget.h"
 #include "GUI/StatisticsWidget.h"
 #include "GUI/RenderPassListWidget.h"
+#include "GUI/LightingWidget.h"
 
 #include "Preprocessor/SceneImporter.h"
 #include "Preprocessor/MaterialImporter.h"
@@ -81,6 +82,7 @@ int main(int argc, char* argv[])
     mainWindow->addWidget(std::make_shared<MaterialLibraryWidget>("Materials", matLib));
     mainWindow->addWidget(std::make_shared<StatisticsWidget>("Stats", mainWindow, renderEngine));
     mainWindow->addWidget(std::make_shared<RenderPassListWidget>("Render Passes", renderEngine));
+    mainWindow->addWidget(std::make_shared<LightingWidget>("Lighting", scene));
 
     Timer frameTimer;
     while (mainWindow->isOpen())

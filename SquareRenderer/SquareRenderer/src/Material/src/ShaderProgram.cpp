@@ -8,12 +8,6 @@ ShaderProgram::ShaderProgram(const std::string& name)
 {
 }
 
-ShaderProgram::ShaderProgram(std::string&& name)
-	: m_name(std::move(name))
-	, m_isBound(false)
-{
-}
-
 const std::string& ShaderProgram::name() const
 {
 	return m_name;

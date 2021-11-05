@@ -5,7 +5,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <functional>
 
 DECLARE_PTRS(RenderEngine);
@@ -47,7 +47,7 @@ private:
 
 	RenderEngineSPtr m_renderEngine;
 
-	std::map<std::string, std::function<IRenderPassWidgetUPtr(IRenderPassSPtr)>> m_widgetFactory;
+	std::unordered_map<std::string, std::function<IRenderPassWidgetUPtr(IRenderPassSPtr)>> m_widgetFactory;
 
 	std::vector<IRenderPassWidgetSPtr> m_renderPassWidgets;
 };

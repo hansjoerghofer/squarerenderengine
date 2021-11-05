@@ -12,6 +12,8 @@ struct RenderStatisticsData
 {
     double cpuTimeMs = 0.0;
     double gpuTimeMs = 0.0;
+
+    size_t rendererdPrimitives = 0;
 };
 
 class IRenderPass

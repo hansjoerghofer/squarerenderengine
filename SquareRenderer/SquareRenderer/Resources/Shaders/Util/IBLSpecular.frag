@@ -1,5 +1,7 @@
 #version 330 core
 
+#pragma include ../Includes/Globals.glsl //! #include "../Includes/Globals.glsl"
+#pragma include ../Includes/Sampling.glsl //! #include "../Includes/Sampling.glsl"
 #pragma include ../Includes/PBR.glsl //! #include "../Includes/PBR.glsl"
 
 in vec4 FragPos;

@@ -22,7 +22,7 @@ public:
 
 	void render(Renderer& renderer) const override final;
 	
-	virtual void update(double deltaTime) override;
+	void update(double deltaTime) override final;
 
 	virtual void setup(IRenderTargetSPtr target);
 
@@ -38,9 +38,13 @@ protected:
 
 	virtual void renderInternal(Renderer& renderer) const = 0;
 
+	virtual void updateInternal(double deltaTime);
+
 	void blit(Renderer& renderer, IRenderTargetSPtr target, MaterialSPtr material, const RendererState& state = RendererState::Blit()) const;
 	
 	bool m_enabled = true;
+	bool m_enableRendering = m_enabled;
+	bool m_enableUpdate = m_enabled;
 
 	std::string m_name;
 

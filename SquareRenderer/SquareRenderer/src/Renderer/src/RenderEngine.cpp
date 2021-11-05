@@ -97,25 +97,22 @@ void RenderEngine::render()
 {
 	for (const auto& pass : m_renderPassList)
 	{
-		if (pass->isEnabled())
-		{
-			pass->render(*m_renderer);
-		}
+		pass->render(*m_renderer);
 	}
 }
 
 void RenderEngine::update(double deltaTime)
 {
-	if (!m_outputTarget || !m_gBuffer || !m_mainCamera) return;
+	if (!m_outputTarget || !m_colorBuffer || !m_mainCamera) return;
 
-	if(m_gBuffer->width() != static_cast<int>(m_outputTarget->width() * m_scale) ||
-	   m_gBuffer->height() != static_cast<int>(m_outputTarget->height() * m_scale))
+	if(m_colorBuffer->width() != static_cast<int>(m_outputTarget->width() * m_scale) ||
+		m_colorBuffer->height() != static_cast<int>(m_outputTarget->height() * m_scale))
 	{
 		m_mainCamera->updateResolution(
 			m_outputTarget->width(), 
 			m_outputTarget->height());
 
-		m_gBuffer.reset();
+		m_colorBuffer.reset();
 		rebuildCommandList();
 	}
 
@@ -137,7 +134,7 @@ void RenderEngine::rebuildCommandList()
 		return;
 	}
 
-	if (!m_gBuffer)
+	if (!m_thinGBuffer || !m_colorBuffer)
 	{
 		Texture2DSPtr colorBuffer = std::make_shared<Texture2D>(
 			static_cast<int>(m_outputTarget->width() * m_scale), 
@@ -149,44 +146,42 @@ void RenderEngine::rebuildCommandList()
 			colorBuffer->height(),
 			TextureFormat::RGBAFloat);
 
-		std::vector<ITextureSPtr> buffers = { colorBuffer, normalsBuffer };
-		m_gBuffer = std::make_shared<RenderTarget>(std::move(buffers), DepthBufferFormat::Depth24Stencil8);
+		m_thinGBuffer = std::make_shared<RenderTarget>(normalsBuffer, DepthBufferFormat::Depth24Stencil8);
+		if (!m_resources->allocateRenderTarget(m_thinGBuffer))
+		{
+			Logger::Error("Invalid Framebuffer. Abort render command list creation.");
+			return;
+		}
 
-		if (!m_api->allocate(m_gBuffer))
+		m_colorBuffer = std::make_shared<RenderTarget>(colorBuffer, m_thinGBuffer->depthBuffer());
+		if (!m_resources->allocateRenderTarget(m_colorBuffer))
 		{
 			Logger::Error("Invalid Framebuffer. Abort render command list creation.");
 			return;
 		}
 	}
 
-	// scene
 	if (m_scene)
 	{
-		{
-			m_shadowMappingPass = std::make_shared<ShadowMappingRenderPass>(m_resources, m_matlib);
-			m_shadowMappingPass->setup(m_scene);
-			m_renderPassList.push_back(m_shadowMappingPass);
-		}
-
-		GeometryRenderPass::Data cmd;
-		cmd.name = "Opaque Scene";
-		cmd.target = m_gBuffer;
-		cmd.state.clearColor = true;
-		//cmd.state.enableWireframe = true;
-		cmd.state.color = glm::vec4(.0f, .0f, .0f, 1);
-		cmd.state.drawBuffers = { DrawBuffer::Attachment0, DrawBuffer::Attachment1 };
-
-		cmd.drawables.reserve(m_scene->nodeNum());
+		std::vector<IDrawableSPtr> opaqueGeometry;
+		opaqueGeometry.reserve(m_scene->nodeNum());
+		std::vector<IDrawableSPtr> transparentGeometry;
 
 		std::set<ShaderProgramSPtr> usedPrograms;
-
 		auto t = m_scene->traverser();
 		while (t.hasNext())
 		{
 			IDrawableSPtr drawable = t.next();
-			if (drawable->geometry())
+			if (drawable->geometry() && drawable->material())
 			{
-				cmd.drawables.push_back(drawable);
+				if (drawable->material()->layer() == Material::Layer::Transparent)
+				{
+					transparentGeometry.push_back(drawable);
+				}
+				else
+				{
+					opaqueGeometry.push_back(drawable);
+				}
 
 				usedPrograms.insert(drawable->material()->program());
 			}
@@ -203,11 +198,54 @@ void RenderEngine::rebuildCommandList()
 			}
 		}
 
-		// opaque scene rendering
-		m_renderPassList.emplace_back(
-			new GeometryRenderPass(m_resources, m_matlib, cmd));
+		/*
+		 * PRE DEPTH PASS
+		 */
+		MaterialSPtr preDataMaterial = m_matlib->instanciate("ForwardLit.Data");
+		if(preDataMaterial)
+		{
+			GeometryRenderPass::Data preDepthPassData;
+			preDepthPassData.name = "Pre Depth Pass";
+			preDepthPassData.target = m_thinGBuffer;
+			preDepthPassData.overrideMaterial = preDataMaterial;
+			preDepthPassData.state.clearColor = true;
+			preDepthPassData.state.color = glm::vec4_black;
+			preDepthPassData.drawables = opaqueGeometry;
 
-		// skybox rendering
+			// opaque scene rendering
+			m_renderPassList.emplace_back(
+				new GeometryRenderPass(m_resources, m_matlib, preDepthPassData));
+		}
+
+		/*
+		 * SHADOW MAPPING
+		 */
+		{
+			m_shadowMapping = std::make_shared<ShadowMappingRenderPass>(m_resources, m_matlib);
+			m_shadowMapping->setup(m_scene);
+			m_renderPassList.push_back(m_shadowMapping);
+		}
+
+		/*
+		 * OPAQUE SCENE PASS
+		 */
+		{
+			GeometryRenderPass::Data opaquePassData;
+			opaquePassData.name = "Opaque Scene";
+			opaquePassData.target = m_colorBuffer;
+			opaquePassData.state.clearColor = true;
+			opaquePassData.state.color = glm::vec4_black;
+			//opaquePassData.state.drawBuffers = { DrawBuffer::Attachment0, DrawBuffer::Attachment1 };
+			opaquePassData.drawables = opaqueGeometry;
+
+			// opaque scene rendering
+			m_renderPassList.emplace_back(
+				new GeometryRenderPass(m_resources, m_matlib, opaquePassData));
+		}
+
+		/*
+		 * SKY PASS
+		 */
 		MaterialSPtr skyboxMat = m_matlib->instanciate("Util.Skybox");
 		if (skyboxMat && m_scene->sky())
 		{
@@ -215,7 +253,7 @@ void RenderEngine::rebuildCommandList()
 
 			GeometryRenderPass::Data cmd2;
 			cmd2.name = "Skybox";
-			cmd2.target = m_gBuffer;
+			cmd2.target = m_colorBuffer;
 			cmd2.state.clearColor = false;
 			cmd2.state.clearDepth = false;
 			cmd2.state.clearStencil = false;
@@ -231,6 +269,23 @@ void RenderEngine::rebuildCommandList()
 				m_renderPassList.emplace_back(
 					new GeometryRenderPass(m_resources, m_matlib, cmd2));
 			}			
+		}
+
+		/*
+		 * TRANSPARENT SCENE PASS
+		 */
+		if (!transparentGeometry.empty())
+		{
+			GeometryRenderPass::Data transparentPassData;
+			transparentPassData.name = "Transparent Scene";
+			transparentPassData.target = m_colorBuffer;
+			transparentPassData.state = RendererState::AlphaBlend();
+			transparentPassData.thinGlassMode = true;
+			transparentPassData.drawables = transparentGeometry;
+
+			// opaque scene rendering
+			m_renderPassList.emplace_back(
+				new GeometryRenderPass(m_resources, m_matlib, transparentPassData));
 		}
 	}
 
@@ -315,14 +370,14 @@ void RenderEngine::setupGizmos(const std::string& programName)
 
 void RenderEngine::setupPostProcessing()
 {
-	if (!m_gBuffer)
+	if (!m_colorBuffer)
 	{
 		return;
 	}
 
 	{
 		BloomRenderPassSPtr bloomPass = std::make_shared<BloomRenderPass>(m_resources, m_matlib);
-		bloomPass->setup(m_gBuffer, m_gBuffer->colorTargetAs<Texture2D>());
+		bloomPass->setup(m_colorBuffer, m_colorBuffer->colorTargetAs<Texture2D>());
 		m_renderPassList.push_back(bloomPass);
 	}
 
@@ -335,38 +390,9 @@ void RenderEngine::setupPostProcessing()
 
 	{
 		TonemappingRenderPassSPtr tonemappingPass = std::make_shared<TonemappingRenderPass>(m_resources, m_matlib);
-		tonemappingPass->setup(m_outputTarget, m_gBuffer);
+		tonemappingPass->setup(m_outputTarget, m_colorBuffer);
 		m_renderPassList.push_back(tonemappingPass);
 	}
-}
-
-RenderTargetSPtr RenderEngine::screenSpaceTarget(float scale)
-{
-	TextureSampler sampler;
-	sampler.mipmapping = false;
-	RenderTargetSPtr rt = std::make_unique<RenderTarget>(
-		std::make_shared<Texture2D>(
-			static_cast<int>(m_outputTarget->width() * scale),
-			static_cast<int>(m_outputTarget->height() * scale),
-			TextureFormat::RGBAFloat, sampler));
-	
-	if (m_api->allocate(rt))
-	{
-		return rt;
-	}
-	else
-	{
-		Logger::Error("Could not allocate screen render target");
-		return nullptr;
-	}
-}
-
-ITextureSPtr RenderEngine::getLastColorTarget(int slotIndex) const
-{
-	RenderTargetSPtr previousTarget = std::static_pointer_cast<RenderTarget>(
-		m_renderPassList.back()->target());
-
-	return previousTarget->colorTargets()[slotIndex];
 }
 
 IRenderTargetSPtr RenderEngine::renderTarget() const
@@ -379,7 +405,7 @@ void RenderEngine::setRenderingScale(double scale)
 	m_scale = scale;
 }
 
-const std::list<IRenderPassSPtr>& RenderEngine::renderPasses() const
+const std::vector<IRenderPassSPtr>& RenderEngine::renderPasses() const
 {
 	return m_renderPassList;
 }
@@ -443,10 +469,13 @@ void RenderEngine::updateLightsUniformData()
 		data.lightsColor[data.numLights] = glm::vec4(light->color(), light->intensity());
 		
 		ShadowData shadowData;
-		auto found = m_shadowMappingPass->shadowData().find(light);
-		if (found != m_shadowMappingPass->shadowData().end())
+		if (m_shadowMapping->isEnabled())
 		{
-			shadowData = found->second;
+			auto found = m_shadowMapping->shadowData().find(light);
+			if (found != m_shadowMapping->shadowData().end())
+			{
+				shadowData = found->second;
+			}
 		}
 		data.lightsMatrix[data.numLights] = shadowData.lightMatrice;
 		data.shadowMapIndex[data.numLights] = glm::vec4(shadowData.index, 0, 0, 0);
@@ -493,20 +522,16 @@ void RenderEngine::projectEquirectangularToCubemap(Texture2DSPtr source, Cubemap
 		projectionMat->setUniform("VP", CUBE_FACE_VP[i], i);
 	}
 
-	GeometryRenderPass::Data cmd;
-	cmd.name = "EquirectangularToCubemap";
-	cmd.target = rt;
-	cmd.drawables.emplace_back(new Primitive(cubeGeom, projectionMat));
+	RendererState state;
+	state.clearColor = true;
+	state.color = glm::vec4_black;
+	state.cullingMode = Culling::Front;
+	state.depthTestMode = DepthTest::Equal;
+	state.writeDepth = false;
 
-	cmd.state.clearColor = true;
-	cmd.state.color = glm::vec4(0, 0, 0, 1);
-	cmd.state.cullingMode = Culling::Front;
-	cmd.state.depthTestMode = DepthTest::Equal;
-	cmd.state.writeDepth = false;
-
-	const auto pass = GeometryRenderPass(m_resources, m_matlib, cmd);
-	pass.render(*m_renderer);
-
+	m_renderer->setTarget(rt);
+	m_renderer->applyState(state);
+	m_renderer->render(cubeGeom, projectionMat);
 	m_renderer->regenerateMipmaps(target);
 }
 

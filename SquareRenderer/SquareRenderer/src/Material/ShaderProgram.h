@@ -19,7 +19,6 @@ class ShaderProgram
 public:
 
 	explicit ShaderProgram(const std::string& name);
-	explicit ShaderProgram(std::string&& name);
 
 	const std::string& name() const;
 

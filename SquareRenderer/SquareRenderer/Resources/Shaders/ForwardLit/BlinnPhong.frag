@@ -1,5 +1,6 @@
 #version 450 core
 
+#pragma include ../Includes/Globals.glsl //! #include "../Includes/Globals.glsl"
 #pragma include ../Includes/Camera.glsl //! #include "../Includes/Camera.glsl"
 #pragma include ../Includes/Lights.glsl //! #include "../Includes/Lights.glsl"
 #pragma include ../Includes/Sampling.glsl //! #include "../Includes/Sampling.glsl"
@@ -13,6 +14,8 @@ in VSData
 
     vec4[_MAX_SIZE_LIGHT] fragPosLS;
 } vs_in;
+
+out vec4 FragColor;
 
 uniform sampler2D albedoTexture; // [white]
 uniform vec4 albedoColor = vec4(1,1,1,1);
@@ -51,5 +54,5 @@ void main()
 
     vec3 unlitColor = albedoColor.rgb * texture(albedoTexture, vs_in.uv).rgb;
 
-    gl_FragColor = vec4(shadedColor * unlitColor, 1);
+    FragColor = vec4(shadedColor * unlitColor, 1);
 }

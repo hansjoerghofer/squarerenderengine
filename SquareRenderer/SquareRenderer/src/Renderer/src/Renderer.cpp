@@ -112,6 +112,8 @@ void RenderVisitor::visit(Mesh& mesh)
     const GLenum mode = m_tesselate ? GL_PATCHES : GL_TRIANGLES;
 
     glDrawElements(mode, indexCount, GL_UNSIGNED_INT, 0);
+
+    m_primitiveCount += static_cast<size_t>(indexCount / 3);
 }
 
 void RenderVisitor::visit(PrimitiveSet& primitiveSet)
@@ -119,6 +121,20 @@ void RenderVisitor::visit(PrimitiveSet& primitiveSet)
     const GLenum type = translate(primitiveSet.type());
     const GLsizei vertexCount = static_cast<GLsizei>(primitiveSet.vertexCount());
     glDrawArrays(type, 0, vertexCount);
+
+    size_t primitiveCount = static_cast<size_t>(vertexCount);
+    primitiveCount /= (type == GL_POINTS) ? 1 : (type == GL_LINES) ? 2 : 3;
+    m_primitiveCount += primitiveCount;
+}
+
+void RenderVisitor::resetPrimitiveCount()
+{
+    m_primitiveCount = 0;
+}
+
+size_t RenderVisitor::primitiveCount() const
+{
+    return m_primitiveCount;
 }
 
 Renderer::Renderer()
@@ -148,6 +164,16 @@ void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
     mat->unbind();
 
     Logger::Debug("End render %s", mat->program()->name().c_str());
+}
+
+size_t Renderer::primitiveCounter() const
+{
+    return m_geometryPainter->primitiveCount();
+}
+
+void Renderer::resetPrimitiveCounter()
+{
+    m_geometryPainter->resetPrimitiveCount();
 }
 
 void Renderer::blit(IRenderTargetSPtr source, IRenderTargetSPtr target, TextureFilter filter, bool color, bool depth, bool stencil)
@@ -208,13 +234,21 @@ void Renderer::applyState(const RendererState& state, bool force)
     // TODO check if it makes more sense as part of IRenderTarget::bind
     if ((force || state.drawBuffers != m_currentState.drawBuffers) && m_currentRenderTarget)
     {
-        m_currentState.drawBuffers = state.drawBuffers;
+        // don't set draw buffers for main framebuffer
+        if (m_currentRenderTarget->handle() != SharedResource::Handle(0))
+        {
+            m_currentState.drawBuffers = state.drawBuffers;
 
-        std::vector<GLenum> drawBuffers;
-        drawBuffers.reserve(state.drawBuffers.size());
-        for (DrawBuffer e : state.drawBuffers) { drawBuffers.push_back(translate(e)); }
+            std::vector<GLenum> drawBuffers;
+            drawBuffers.reserve(state.drawBuffers.size());
+            for (DrawBuffer e : state.drawBuffers) { drawBuffers.push_back(translate(e)); }
 
-        glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+            glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+        }
+        else
+        {
+            m_currentState.drawBuffers.clear();
+        }
     }
 
     if (force || state.enableWireframe != m_currentState.enableWireframe)

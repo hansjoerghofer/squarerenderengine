@@ -24,19 +24,24 @@ void TonemappingRenderPass::setup(IRenderTargetSPtr target, RenderTargetSPtr inp
 
 	m_passthrough = m_matlib->instanciate("PP.Blit");
 	m_passthrough->setUniform("image", m_input->colorTarget());
-
-	m_screenBlit = RendererState::Blit();
-	m_screenBlit.drawBuffers.clear();
 }
 
-void TonemappingRenderPass::update(double /*deltaTime*/)
+void TonemappingRenderPass::setEnabled(bool flag)
 {
-
+	BaseRenderPass::setEnabled(flag);
+	m_enableRendering = true;
 }
 
 void TonemappingRenderPass::renderInternal(Renderer& renderer) const
 {
 	//blit(renderer, m_target, m_enabled ? m_tonemapping : m_passthrough);
-	blit(renderer, m_target, m_tonemapping);
-	//blit(renderer, m_target, m_passthrough);// , m_screenBlit);
+	
+	if (isEnabled())
+	{
+		blit(renderer, m_target, m_tonemapping);
+	}
+	else
+	{
+		blit(renderer, m_target, m_passthrough);
+	}
 }

@@ -4,14 +4,6 @@
 Material::Material(const std::string& name, ShaderProgramSPtr program)
 	: m_name(name)
 	, m_program(program)
-	, m_isBound(false)
-{
-}
-
-Material::Material(std::string&& name, ShaderProgramSPtr program)
-	: m_name(std::move(name))
-	, m_program(program)
-	, m_isBound(false)
 {
 }
 
@@ -24,6 +16,16 @@ void Material::setProgram(ShaderProgramSPtr program)
 {
 	unbind();
 	m_program = program;
+}
+
+void Material::setLayer(Material::Layer layer)
+{
+	m_layer = layer;
+}
+
+Material::Layer Material::layer() const
+{
+	return m_layer;
 }
 
 const std::string& Material::name() const

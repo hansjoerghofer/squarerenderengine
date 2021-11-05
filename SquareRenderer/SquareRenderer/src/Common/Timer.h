@@ -81,11 +81,6 @@ public:
 		, m_descriptor(descriptor)
 	{}
 
-	ScopedTimerLog(std::string&& descriptor)
-		: TimerLog()
-		, m_descriptor(std::move(descriptor))
-	{}
-
 	~ScopedTimerLog()
 	{
 		logElapsed(m_descriptor);

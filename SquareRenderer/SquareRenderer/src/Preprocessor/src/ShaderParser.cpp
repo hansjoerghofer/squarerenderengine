@@ -6,12 +6,12 @@
 #include <fstream>
 #include <exception>
 #include <filesystem>
-#include <map>
+#include <unordered_map>
 #include <regex>
 
 #define DEBUG_OUT_SHADERS
 
-static const std::map<std::string, ShaderType> s_extensionToShaderType =
+static const std::unordered_map<std::string, ShaderType> s_extensionToShaderType =
 {
     { ".vert", ShaderType::Vertex },
     { ".frag", ShaderType::Fragment },
@@ -21,7 +21,7 @@ static const std::map<std::string, ShaderType> s_extensionToShaderType =
     { ".tese", ShaderType::TesselationEvaluation }
 };
 
-static const std::map<std::string, UniformType> s_glslTypeToUniformType =
+static const std::unordered_map<std::string, UniformType> s_glslTypeToUniformType =
 {
     { "float",          UniformType::Float },
     { "int",            UniformType::Int },
@@ -76,6 +76,7 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath, const s
     // reset the path stack
     m_pathStack = std::stack<std::filesystem::path>();
     m_tempUniformCache.clear();
+    m_tempProcessedIncludes.clear();
     m_shaderDefines = defines;
 
     // load the file
@@ -83,7 +84,7 @@ ShaderSourceSPtr ShaderParser::loadFromFile(const std::string& filepath, const s
     if (readFile(path, content))
     {
         ShaderSourceSPtr shader = std::make_shared<ShaderSource>(
-            type, std::move(content.str()), m_tempUniformCache);
+            type, content.str(), m_tempUniformCache);
 
         m_shaderCache[cacheKeyStr] = shader;
 
@@ -113,7 +114,15 @@ bool ShaderParser::readFile(const std::filesystem::path& filepath, std::stringst
     const auto& found = m_fileCache.find(cacheKey(pathStr, m_shaderDefines));
     if (found != m_fileCache.end())
     {
-        out << found->second;
+        // only add file contents if file was not already processed
+        if (m_tempProcessedIncludes.find(pathStr) == m_tempProcessedIncludes.end())
+        {
+            out << found->second;
+
+            // remember processed files
+            m_tempProcessedIncludes.insert(pathStr);
+        }
+
         return true;
     }
 
@@ -151,6 +160,9 @@ bool ShaderParser::readFile(const std::filesystem::path& filepath, std::stringst
     // cache file contents
     m_fileCache.emplace(std::make_pair(
         cacheKey(pathStr, m_shaderDefines), std::move(contents)));
+
+    // remember processed files
+    m_tempProcessedIncludes.insert(pathStr);
 
     return true;
 }
@@ -196,7 +208,7 @@ bool ShaderParser::handleDefine(const std::string& line, std::stringstream& out)
             out << "// >> include " << value << '\n';
         }
 
-        // append include file into corrent string
+        // append include file into current string
         std::filesystem::path includePath(value);
         const bool ok = readFile(includePath, out);
 
@@ -328,7 +340,7 @@ bool ShaderParser::handleUniform(const std::string& line, std::stringstream& out
             }
         }
 
-        m_tempUniformCache.emplace_back(std::move(metaInfo));
+        m_tempUniformCache.emplace_back(metaInfo);
     }
     return true;
 }
@@ -343,7 +355,7 @@ std::filesystem::path ShaderParser::resolveCurrentPath(const std::filesystem::pa
         }
         else
         {
-            return std::filesystem::path(m_pathStack.top()) / path;
+            return std::filesystem::absolute(std::filesystem::path(m_pathStack.top()) / path);
         }
     }
     else

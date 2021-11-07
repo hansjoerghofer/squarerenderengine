@@ -10,4 +10,5 @@ Implemented Features:
   * Bloom 
   * Tonemapping
 
-![Screenshot](https://github.com/hansjoerghofer/squarerenderengine/Images/Screenshot_AlarmClock.png)
+![Screenshot](https://github.com/hansjoerghofer/squarerenderengine/blob/main/Images/Screenshot_AlarmClock.png?raw=true)
+Screenshot taken on a notebook with Core i7 & GeForce MX150

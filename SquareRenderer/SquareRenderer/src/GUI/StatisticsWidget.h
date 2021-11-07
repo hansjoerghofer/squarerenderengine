@@ -46,5 +46,7 @@ private:
 	std::string m_title;
 
 	bool m_visible;
+
+	bool m_detailView = false;
 };
 

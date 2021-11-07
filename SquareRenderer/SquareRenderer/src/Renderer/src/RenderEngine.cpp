@@ -204,6 +204,8 @@ void RenderEngine::rebuildCommandList()
 		MaterialSPtr preDataMaterial = m_matlib->instanciate("ForwardLit.Data");
 		if(preDataMaterial)
 		{
+			// TODO depth is not used by scene pass?
+
 			GeometryRenderPass::Data preDepthPassData;
 			preDepthPassData.name = "Pre Depth Pass";
 			preDepthPassData.target = m_thinGBuffer;

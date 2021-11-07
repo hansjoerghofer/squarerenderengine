@@ -53,28 +53,35 @@ void StatisticsWidget::draw()
 
 	ImGui::PlotLines("", m_frametimeBuffer, IM_ARRAYSIZE(m_frametimeBuffer), m_frametimeIndex, 0, 0.0f, 90.0f, ImVec2(0, 90.0f));
 
+	ImGui::Checkbox("Detailed Pass View", &m_detailView);
+
 	for (IRenderPassSPtr pass : m_engine->renderPasses())
 	{
 		ImGui::Separator();
 
 		double gpuTime = 0;
-		//double cpuTime = 0;
-		//int primitiveCount = 0;
+		double cpuTime = 0;
+		int primitiveCount = 0;
 
 		if (pass->isEnabled())
 		{
 			RenderStatisticsData stats = pass->renderStatistics();
 			gpuTime = stats.gpuTimeMs;
-			//cpuTime = stats.cpuTimeMs;
-			//primitiveCount = static_cast<int>(stats.rendererdPrimitives);
+			cpuTime = stats.cpuTimeMs;
+			primitiveCount = static_cast<int>(stats.rendererdPrimitives);
 		}
 
-		ImGui::Text("%s: %.2fms", pass->name().c_str(), gpuTime);
-
-		//ImGui::Text(pass->name().c_str());
-		//ImGui::Text("GPU time: %.2fms", gpuTime);
-		//ImGui::Text("CPU time: %.2fms", cpuTime);
-		//ImGui::Text("Primitives: %i", primitiveCount);
+		if (m_detailView && pass->isEnabled())
+		{
+			ImGui::Text(pass->name().c_str());
+			ImGui::Text("GPU time: %.2fms", gpuTime);
+			ImGui::Text("CPU time: %.2fms", cpuTime);
+			ImGui::Text("Primitives: %i", primitiveCount);
+		}
+		else
+		{
+			ImGui::Text("%s: %.2fms", pass->name().c_str(), gpuTime);
+		}
 	}
 
 	ImGui::End();

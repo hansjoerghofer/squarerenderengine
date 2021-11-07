@@ -149,8 +149,6 @@ Renderer::Renderer()
 
 void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
 {
-    Logger::Debug("Begin render %s", mat->program()->name().c_str());
-
     mat->bind();
     bindTextures(mat);
     geo->bind();
@@ -162,8 +160,6 @@ void Renderer::render(IGeometrySPtr geo, MaterialSPtr mat)
     geo->unbind();
     unbindTextures();
     mat->unbind();
-
-    Logger::Debug("End render %s", mat->program()->name().c_str());
 }
 
 size_t Renderer::primitiveCounter() const
@@ -408,6 +404,7 @@ void Renderer::regenerateMipmaps(ITextureSPtr tex)
 
 void Renderer::bindTextures(MaterialSPtr mat)
 {
+    //TODO optimize!! don't use strings here if possible!
     auto textures = mat->uniformTextures();
     textures.insert(
         mat->program()->defaultTextures().begin(),
@@ -439,7 +436,7 @@ void Renderer::bindTextures(MaterialSPtr mat)
 
         ++activeTextureUnit;
 
-        Logger::Debug("Bind texture %i to '%s'", texture->handle(), name.c_str());
+        //Logger::Debug("Bind texture %i to '%s'", texture->handle(), name.c_str());
     }
 }
 

@@ -46,6 +46,8 @@ unsigned int SceneNode::count() const
 void SceneNode::setLocalTransform(const glm::mat4& transform)
 {
     m_transform = transform;
+
+    m_dirtyTransform = true;
 }
 
 const glm::mat4& SceneNode::localTransform() const
@@ -55,10 +57,15 @@ const glm::mat4& SceneNode::localTransform() const
 
 glm::mat4 SceneNode::worldTransform() const
 {
-    // TODO cache result!
     if (!m_parent.expired())
     {
-        return m_parent.lock()->worldTransform() * localTransform();
+        if (m_dirtyTransform)
+        {
+            m_cachedWorldTransform = m_parent.lock()->worldTransform() * localTransform();
+            m_cachedNormalToWorld = glm::transpose(glm::inverse(m_cachedWorldTransform));
+            m_dirtyTransform = false;
+        }
+        return m_cachedWorldTransform;
     }
     else
     {
@@ -88,10 +95,10 @@ IGeometrySPtr SceneNode::geometry() const
 
 void SceneNode::preRender(MaterialSPtr material)
 {
-    glm::mat4 modelToWorld = worldTransform();
+    const glm::mat4 modelToWorld = worldTransform();
 
     material->setUniform("modelToWorld", modelToWorld);
-    material->setUniform("normalToWorld", glm::transpose(glm::inverse(modelToWorld)));
+    material->setUniform("normalToWorld", m_cachedNormalToWorld);// glm::transpose(glm::inverse(modelToWorld)));
 }
 
 void SceneNode::postRender()

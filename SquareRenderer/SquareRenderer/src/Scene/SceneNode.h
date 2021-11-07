@@ -68,4 +68,9 @@ private:
 	BoundingBox m_bounds;
 
 	std::vector<SceneNodeSPtr> m_children;
+
+	mutable glm::mat4 m_cachedNormalToWorld;
+	mutable glm::mat4 m_cachedWorldTransform;
+
+	mutable bool m_dirtyTransform = false;
 };
